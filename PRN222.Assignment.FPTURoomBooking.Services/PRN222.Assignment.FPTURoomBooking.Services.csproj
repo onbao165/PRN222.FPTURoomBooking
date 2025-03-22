@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="BCrypt.Net-Core" Version="1.6.0" />
+        <PackageReference Include="Mapster" Version="7.4.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\PRN222.Assignment.FPTURoomBooking.Repositories\PRN222.Assignment.FPTURoomBooking.Repositories.csproj" />
+    </ItemGroup>
+</Project>

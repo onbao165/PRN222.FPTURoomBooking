@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PRN222.Assignment.FPTURoomBooking.Mvc", "PRN222.Assignment.FPTURoomBooking.Mvc\PRN222.Assignment.FPTURoomBooking.Mvc.csproj", "{01D67381-6D93-4938-B169-245821F75BC7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PRN222.Assignment.FPTURoomBooking.Services", "PRN222.Assignment.FPTURoomBooking.Services\PRN222.Assignment.FPTURoomBooking.Services.csproj", "{F55DCC34-A01E-4623-98D7-91601A4FC663}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PRN222.Assignment.FPTURoomBooking.Repositories", "PRN222.Assignment.FPTURoomBooking.Repositories\PRN222.Assignment.FPTURoomBooking.Repositories.csproj", "{29615A30-62A4-4C9E-BF48-BD32A74E9B95}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PRN222.Assignment.FPTURoomBooking.Blazor", "PRN222.Assignment.FPTURoomBooking.Blazor\PRN222.Assignment.FPTURoomBooking.Blazor.csproj", "{4779F92D-9642-4509-9E67-B14EB0895123}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{01D67381-6D93-4938-B169-245821F75BC7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{01D67381-6D93-4938-B169-245821F75BC7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{01D67381-6D93-4938-B169-245821F75BC7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{01D67381-6D93-4938-B169-245821F75BC7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F55DCC34-A01E-4623-98D7-91601A4FC663}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F55DCC34-A01E-4623-98D7-91601A4FC663}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F55DCC34-A01E-4623-98D7-91601A4FC663}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F55DCC34-A01E-4623-98D7-91601A4FC663}.Release|Any CPU.Build.0 = Release|Any CPU
+		{29615A30-62A4-4C9E-BF48-BD32A74E9B95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{29615A30-62A4-4C9E-BF48-BD32A74E9B95}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{29615A30-62A4-4C9E-BF48-BD32A74E9B95}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{29615A30-62A4-4C9E-BF48-BD32A74E9B95}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4779F92D-9642-4509-9E67-B14EB0895123}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4779F92D-9642-4509-9E67-B14EB0895123}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4779F92D-9642-4509-9E67-B14EB0895123}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4779F92D-9642-4509-9E67-B14EB0895123}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
