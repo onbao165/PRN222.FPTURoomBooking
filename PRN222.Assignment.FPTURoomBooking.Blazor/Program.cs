@@ -1,3 +1,4 @@
+using PRN222.Assignment.FPTURoomBooking.Blazor;
 using PRN222.Assignment.FPTURoomBooking.Blazor.Components;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -5,6 +6,10 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.ConfigureDatabase();
+builder.ConfigureServices();
+builder.ConfigureCookieAuthentication();
 
 var app = builder.Build();
 

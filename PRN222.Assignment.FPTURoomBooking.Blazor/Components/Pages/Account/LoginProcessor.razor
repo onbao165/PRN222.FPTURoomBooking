@@ -1,0 +1,50 @@
+@page "/Account/LoginProcessor"
+@inject NavigationManager NavigationManager
+@inject IHttpContextAccessor HttpContextAccessor
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+
+@code {
+    [Parameter] [SupplyParameterFromQuery] public string? Username { get; set; }
+
+    [Parameter] [SupplyParameterFromQuery] public string? Fullname { get; set; }
+
+    [Parameter] [SupplyParameterFromQuery] public string? Email { get; set; }
+
+    [Parameter] [SupplyParameterFromQuery] public string? Role { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(Username))
+        {
+            NavigationManager.NavigateTo("/Account/Login", true);
+            return;
+        }
+
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, Username),
+            new Claim(ClaimTypes.Name, Fullname ?? ""),
+            new Claim(ClaimTypes.Email, Email ?? ""),
+            new Claim(ClaimTypes.Role, Role ?? ""),
+        };
+
+        var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var authProperties = new AuthenticationProperties
+        {
+            IsPersistent = true,
+            ExpiresUtc = DateTimeOffset.UtcNow.AddDays(1)
+        };
+
+        await HttpContextAccessor.HttpContext!.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(claimsIdentity),
+            authProperties);
+
+        NavigationManager.NavigateTo("/", true);
+    }
+
+}
+
+<div>Processing login...</div>

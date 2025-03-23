@@ -1,0 +1,98 @@
+@page "/Account/Login"
+@rendermode InteractiveServer
+@using PRN222.Assignment.FPTURoomBooking.Blazor.Models
+@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@using System.Security.Claims
+@using PRN222.Assignment.FPTURoomBooking.Repositories.Models
+@inject IAccountService AccountService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Login</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="text-center">Login</h3>
+            </div>
+            <div class="card-body">
+                <EditForm Model="@_loginModel" OnValidSubmit="@HandleValidSubmit" FormName="loginForm">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="form-group mb-3">
+                        <label for="email">Email</label>
+                        <InputText id="email" @bind-Value="@_loginModel.Email" class="form-control" />
+                        <ValidationMessage For="@(() => _loginModel.Email)" />
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="password">Password</label>
+                        <InputText id="password" type="password" @bind-Value="@_loginModel.Password"
+                            class="form-control" />
+                        <ValidationMessage For="@(() => _loginModel.Password)" />
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <div class="alert alert-danger">
+                            @_errorMessage
+                        </div>
+                    }
+
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary">Login</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+
+    private LoginModel _loginModel = new();
+    private string _errorMessage = string.Empty;
+
+    private void ClearValidationMessages()
+    {
+        // Clear any existing error message when user types
+        _errorMessage = string.Empty;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            var result = await AccountService.LoginAsync(_loginModel.Email, _loginModel.Password);
+
+            if (result.IsSuccess)
+            {
+                var account = result.Data;
+                // Only allow Manager role (1) to login
+                if (result.Data!.Role != AccountRole.Manager)
+                {
+                    _errorMessage = "Access denied. Only managers can log in to this system.";
+                    return;
+                }
+                
+                // Use NavigationManager to redirect with a full page reload before authentication
+                NavigationManager.NavigateTo("/Account/LoginProcessor?" +
+                $"username={Uri.EscapeDataString(account.Username)}&" +
+                $"fullname={Uri.EscapeDataString(account.FullName)}&" +
+                $"email={Uri.EscapeDataString(account.Email)}&" +
+                $"role={Uri.EscapeDataString(account.Role.ToString())}",
+                forceLoad: true);
+            }
+            else
+            {
+                _errorMessage = result.Error!;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = "An error occurred during login. Please try again.";
+        }
+    }
+
+}

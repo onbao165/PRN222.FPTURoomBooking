@@ -148,5 +148,30 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
                 return Result<BookingModel>.Failure($"Failed to create booking: {ex.Message}");
             }
         }
+
+        public async Task<Result> UpdateStatusAsync(Guid id, BookingStatus status)
+        {
+            var entity = await _unitOfWork.BookingRepository.GetQueryable()
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (entity == null)
+            {
+                return Result.Failure("Booking not found");
+            }
+
+            // Only allow updating status if current status is Pending
+            if (entity.Status != BookingStatus.Pending)
+            {
+                return Result.Failure("Can only update status of pending bookings");
+            }
+
+            entity.Status = status;
+            entity.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.BookingRepository.Update(entity);
+            await _unitOfWork.SaveChangesAsync();
+
+            return Result.Success();
+        }
     }
 }

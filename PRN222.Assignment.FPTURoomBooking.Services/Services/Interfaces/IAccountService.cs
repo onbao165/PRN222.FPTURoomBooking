@@ -11,4 +11,5 @@ public interface IAccountService
     Task<Result<AccountModel>> GetAsync(Guid id);
     Task<Result<PaginationResult<AccountModel>>> GetPagedAsync(GetAccountModel model);
     Task<Result<AccountModel>> LoginAsync(string email, string password);
+    Task<Result<AccountModel>> GetByEmailAsync(string email);
 }
