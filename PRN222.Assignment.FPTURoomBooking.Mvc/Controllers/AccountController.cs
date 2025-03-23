@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using PRN222.Assignment.FPTURoomBooking.Mvc.Models;
+using PRN222.Assignment.FPTURoomBooking.Repositories.Models;
 using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces;
 
 namespace PRN222.Assignment.FPTURoomBooking.Mvc.Controllers;
@@ -45,12 +46,18 @@ public class AccountController : Controller
 
         var account = result.Data;
 
+        if (account.Role != AccountRole.User)
+        {
+            ModelState.AddModelError(string.Empty, "Access denied. Only users can log in to this system.");
+            return View(model);
+        }
+
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, account.Id.ToString()),
-            new Claim(ClaimTypes.Name, account.FullName),
-            new Claim(ClaimTypes.Email, account.Email),
-            new Claim(ClaimTypes.Role, account.Role.ToString())
+            new(ClaimTypes.NameIdentifier, account.Id.ToString()),
+            new(ClaimTypes.Name, account.FullName),
+            new(ClaimTypes.Email, account.Email),
+            new(ClaimTypes.Role, account.Role.ToString())
         };
 
         if (account.DepartmentId.HasValue)
