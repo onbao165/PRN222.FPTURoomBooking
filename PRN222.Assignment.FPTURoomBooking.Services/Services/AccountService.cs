@@ -51,6 +51,11 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             return entity ?? Result<AccountModel>.Failure("Account not found");
         }
 
+        public Task<Result<AccountModel>> GetByEmailAsync(string email)
+        {
+            throw new NotImplementedException();
+        }
+
         public async Task<Result<PaginationResult<AccountModel>>> GetPagedAsync(GetAccountModel model)
         {
             var query = _unitOfWork.AccountRepository.GetQueryable();
@@ -73,18 +78,18 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
         }
 
         public async Task<Result<AccountModel>> LoginAsync(string email, string password)
+        {
+            var entity = await _unitOfWork.AccountRepository.GetQueryable().FirstOrDefaultAsync(x => x.Email == email);
+            if (entity == null)
             {
-                var entity = await _unitOfWork.AccountRepository.GetQueryable().FirstOrDefaultAsync(x => x.Email == email);
-                if (entity == null)
-                {
-                    return Result<AccountModel>.Failure("Account not found");
-                }
-                if (!_passwordHasher.VerifyPassword(password, entity.Password))
-                {
-                    return Result<AccountModel>.Failure("Invalid password");
-                }
-                return entity.Adapt<AccountModel>();
+                return Result<AccountModel>.Failure("Account not found");
             }
+            if (!_passwordHasher.VerifyPassword(password, entity.Password))
+            {
+                return Result<AccountModel>.Failure("Invalid password");
+            }
+            return entity.Adapt<AccountModel>();
+        }
 
         public async Task<Result> UpdateAsync(AccountModel model)
         {

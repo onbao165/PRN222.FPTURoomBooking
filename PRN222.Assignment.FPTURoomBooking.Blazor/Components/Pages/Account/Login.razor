@@ -62,37 +62,38 @@
 
     private async Task HandleValidSubmit()
     {
-        try
-        {
-            var result = await AccountService.LoginAsync(_loginModel.Email, _loginModel.Password);
+    try
+    {
+        var result = await AccountService.LoginAsync(_loginModel.Email, _loginModel.Password);
 
-            if (result.IsSuccess)
-            {
-                var account = result.Data;
-                // Only allow Manager role (1) to login
-                if (result.Data!.Role != AccountRole.Manager)
-                {
-                    _errorMessage = "Access denied. Only managers can log in to this system.";
-                    return;
-                }
-                
-                // Use NavigationManager to redirect with a full page reload before authentication
-                NavigationManager.NavigateTo("/Account/LoginProcessor?" +
-                $"username={Uri.EscapeDataString(account.Username)}&" +
-                $"fullname={Uri.EscapeDataString(account.FullName)}&" +
-                $"email={Uri.EscapeDataString(account.Email)}&" +
-                $"role={Uri.EscapeDataString(account.Role.ToString())}",
-                forceLoad: true);
-            }
-            else
-            {
-                _errorMessage = result.Error!;
-            }
-        }
-        catch (Exception ex)
+        if (result.IsSuccess)
         {
-            _errorMessage = "An error occurred during login. Please try again.";
+            var account = result.Data;
+            // Only allow Manager role (1) to login
+            if (result.Data!.Role != AccountRole.Manager)
+            {
+                _errorMessage = "Access denied. Only managers can log in to this system.";
+                return;
+            }
+            
+            // Use NavigationManager to redirect with a full page reload before authentication
+            NavigationManager.NavigateTo("/Account/LoginProcessor?" +
+            $"username={Uri.EscapeDataString(account.Username)}&" +
+            $"fullname={Uri.EscapeDataString(account.FullName)}&" +
+            $"email={Uri.EscapeDataString(account.Email)}&" +
+            $"role={Uri.EscapeDataString(account.Role.ToString())}&" +
+            $"departmentId={account.DepartmentId}",
+            forceLoad: true);
         }
+        else
+        {
+            _errorMessage = result.Error!;
+        }
+    }
+    catch (Exception ex)
+    {
+        _errorMessage = "An error occurred during login. Please try again.";
+    }
     }
 
 }
