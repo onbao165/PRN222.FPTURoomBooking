@@ -30,83 +30,84 @@
     }
     else
     {
-        @* <div class="table-responsive"> *@
-        @*     <table class="table table-striped"> *@
-        @*         <thead> *@
-        @*             <tr> *@
-        @*                 <th>Name</th> *@
-        @*                 <th>Description</th> *@
-        @*                 <th>Department</th> *@
-        @*                 <th>Created At</th> *@
-        @*                 <th>Actions</th> *@
-        @*             </tr> *@
-        @*         </thead> *@
-        @*         <tbody> *@
-        @*             @foreach (var room in _rooms.Items) *@
-        @*             { *@
-        @*                 <tr> *@
-        @*                     <td>@room.Name</td> *@
-        @*                     <td>@(room.Description ?? "N/A")</td> *@
-        @*                     <td>@room.Department.Name</td> *@
-        @*                     <td>@room.CreatedAt.ToShortDateString()</td> *@
-        @*                     <td> *@
-        @*                         <a href="/Room/Edit/@room.Id" class="btn btn-sm btn-warning me-2"> *@
-        @*                             <i class="fa fa-edit"></i> Edit *@
-        @*                         </a> *@
-        @*                     </td> *@
-        @*                 </tr> *@
-        @*             } *@
-        @*         </tbody> *@
-        @*     </table> *@
-        @* </div> *@
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Department</th>
+                        <th>Created At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var room in _rooms.Items)
+                    {
+                        <tr> 
+                           <td>@room.Name</td>
+                            <td>@(room.Description ?? "N/A")</td>
+                            <td>@room.Department.Name</td>
+                            <td>@room.CreatedAt.ToShortDateString()</td>
+                            <td>
+                                <a href="/Room/Edit/@room.Id" class="btn btn-sm btn-warning me-2">
+                                    <i class="fa fa-edit"></i> Edit
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
 
-        @* <Pagination CurrentPage="@_currentPage" TotalPages="@_totalPages" OnPageChanged="@LoadRooms" /> *@
+        <Pagination CurrentPage="@_currentPage" TotalPages="@_totalPages" OnPageChanged="@LoadRooms" />
     }
 </div>
 
 @code {
-    // private PaginationResult<RoomModel> _rooms = new();
+    private PaginationResult<RoomModel> _rooms = new(Enumerable.Empty<RoomModel>(), 0, 1, 10);
     private bool _loading = true;
     private int _currentPage = 1;
     private int _totalPages = 1;
     private Guid _departmentId;
 
-    // protected override async Task OnInitializedAsync()
-    // {
-    //     var user = HttpContextAccessor.HttpContext?.User;
-    //     if (user?.Identity?.IsAuthenticated == true)
-    //     {
-    //         var departmentIdClaim = user.FindFirst("DepartmentId")?.Value;
-    //         if (Guid.TryParse(departmentIdClaim, out var deptId))
-    //         {
-    //             _departmentId = deptId;
-    //             await LoadRooms(_currentPage);
-    //         }
-    //     }
-    // }
+    protected override async Task OnInitializedAsync()
+    {
+        var user = HttpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            var departmentIdClaim = user.FindFirst("DepartmentId")?.Value;
+            if (Guid.TryParse(departmentIdClaim, out var deptId))
+            {
+                _departmentId = deptId;
+                await LoadRooms(_currentPage);
+            }
+        }
+    }
 
-    // private async Task LoadRooms(int page)
-    // {
-    //     try
-    //     {
-    //         _loading = true;
-    //         var result = await RoomService.GetPagedAsync(new GetRoomModel
-    //         {
-    //             PageNumber = page,
-    //             PageSize = 10,
-    //             DepartmentId = _departmentId
-    //         });
+    private async Task LoadRooms(int page)
+    {
+        try
+        {
+            _loading = true;
+            var result = await RoomService.GetPagedAsync(new GetRoomModel
+                {
+                    PageNumber = page,
+                    PageSize = 10,
+                    DepartmentId = _departmentId
+                });
 
-    //         if (result.IsSuccess)
-    //         {
-    //             _rooms = result.Data!;
-    //             _currentPage = page;
-    //             _totalPages = (int)Math.Ceiling(_rooms.TotalItems / 10.0);
-    //         }
-    //     }
-    //     finally
-    //     {
-    //         _loading = false;
-    //     }
-    // }
+            if (result.IsSuccess)
+            {
+                var data = result.Data!;
+                _rooms = new PaginationResult<RoomModel>(data.Items, data.TotalItems, data.PageNumber, data.PageSize);
+                _currentPage = page;
+                _totalPages = (int)Math.Ceiling(data.TotalItems / 10.0);
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
 }
