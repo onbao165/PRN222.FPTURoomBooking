@@ -4,30 +4,26 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using PRN222.Assignment.FPTURoomBooking.Mvc.Models;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Room;
-using PRN222.Assignment.FPTURoomBooking.Services.Models.RoomSlot;
 using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces;
 using PRN222.Assignment.FPTURoomBooking.Services.Utils;
 
 namespace PRN222.Assignment.FPTURoomBooking.Mvc.Controllers;
 
-[Authorize]
+[Authorize(Roles = "User")]
 public class RoomController : Controller
 {
-    private readonly IRoomService _roomService;
+     private readonly IRoomService _roomService;
     private readonly IDepartmentService _departmentService;
     private readonly ICampusService _campusService;
-    private readonly IRoomSlotService _roomSlotService;
 
     public RoomController(
         IRoomService roomService,
         IDepartmentService departmentService,
-        ICampusService campusService,
-        IRoomSlotService roomSlotService)
+        ICampusService campusService)
     {
         _roomService = roomService;
         _departmentService = departmentService;
         _campusService = campusService;
-        _roomSlotService = roomSlotService;
     }
 
     public async Task<IActionResult> Index(RoomListViewModel model)
@@ -100,7 +96,8 @@ public class RoomController : Controller
 
         var resultModel = new RoomListViewModel
         {
-            Rooms = new PaginationResult<RoomViewModel>(rooms, result.Data.TotalItems, result.Data.PageNumber, result.Data.PageSize),
+            Rooms = new PaginationResult<RoomViewModel>(rooms, result.Data.TotalItems, result.Data.PageNumber,
+                result.Data.PageSize),
             SearchTerm = model.SearchTerm,
             OrderBy = model.OrderBy,
             IsDescending = model.IsDescending,
@@ -126,23 +123,7 @@ public class RoomController : Controller
 
         // Ensure we have the department and campus name
         room.DepartmentName = roomResult.Data.Department.Name;
-
         room.CampusName = roomResult.Data.Department.Campus.Name;
-
-        // Get room slots for this room
-        var roomSlotsModel = new GetRoomSlotModel
-        {
-            RoomId = id,
-            PageNumber = 1,
-            PageSize = 50, // Show a reasonable number of room slots
-            OrderBy = "timeSlot"
-        };
-
-        var roomSlotsResult = await _roomSlotService.GetPagedAsync(roomSlotsModel);
-
-        ViewBag.RoomSlots = roomSlotsResult.IsSuccess
-            ? roomSlotsResult.Data
-            : null;
 
         return View(room);
     }
