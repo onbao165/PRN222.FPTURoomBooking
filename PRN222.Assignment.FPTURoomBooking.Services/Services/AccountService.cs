@@ -101,13 +101,12 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
 
         public async Task<Result<AccountModel>> LoginAsync(string email, string password)
         {
-            var entity = await _unitOfWork.AccountRepository.GetQueryable()
-                .FirstOrDefaultAsync(x => x.Email == email && x.Password == password);
+            var entity = await _unitOfWork.AccountRepository.GetQueryable().FirstOrDefaultAsync(x => x.Email == email);
             if (entity == null)
             {
                 return Result<AccountModel>.Failure("Account not found");
             }
-
+            //
             // if (!_passwordHasher.VerifyPassword(password, entity.Password))
             // {
             //     return Result<AccountModel>.Failure("Invalid password");

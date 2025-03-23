@@ -9,7 +9,7 @@ using PRN222.Assignment.FPTURoomBooking.Services.Utils;
 
 namespace PRN222.Assignment.FPTURoomBooking.Mvc.Controllers;
 
-[Authorize]
+[Authorize(Roles = "User")]
 public class CampusController : Controller
 {
     private readonly ICampusService _campusService;

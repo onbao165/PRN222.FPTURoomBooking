@@ -9,7 +9,7 @@ using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces;
 
 namespace PRN222.Assignment.FPTURoomBooking.Mvc.Controllers;
 
-[Authorize]
+[Authorize(Roles = "User")]
 public class ProfileController : Controller
 {
     private readonly IAccountService _accountService;
@@ -55,7 +55,7 @@ public class ProfileController : Controller
         if (accountResult.Data.DepartmentId.HasValue)
         {
             var departmentResult = await _departmentService.GetAsync(accountResult.Data.DepartmentId.Value);
-            if (departmentResult.IsSuccess)
+            if (departmentResult is { IsSuccess: true, Data: not null })
             {
                 profileViewModel.DepartmentName = departmentResult.Data.Name;
             }

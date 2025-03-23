@@ -6,6 +6,8 @@
 @using Microsoft.AspNetCore.Authentication.Cookies
 
 @code {
+    [Parameter] [SupplyParameterFromQuery] public string? Id { get; set; }
+
     [Parameter] [SupplyParameterFromQuery] public string? Username { get; set; }
 
     [Parameter] [SupplyParameterFromQuery] public string? Fullname { get; set; }
@@ -24,7 +26,8 @@
 
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, Username),
+            new Claim("Username ", Username ?? ""),
+            new Claim(ClaimTypes.NameIdentifier, Id ?? ""),
             new Claim(ClaimTypes.Name, Fullname ?? ""),
             new Claim(ClaimTypes.Email, Email ?? ""),
             new Claim(ClaimTypes.Role, Role ?? ""),

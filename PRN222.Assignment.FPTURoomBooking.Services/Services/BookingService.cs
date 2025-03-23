@@ -51,60 +51,67 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
 
         public async Task<Result<PaginationResult<BookingModel>>> GetPagedAsync(GetBookingModel model)
         {
-            var query = _unitOfWork.BookingRepository.GetQueryable();
-            Expression<Func<Booking, bool>> filter = x => true;
-
-            if (!string.IsNullOrEmpty(model.SearchTerm))
+            try
             {
-                filter = filter.CombineAndAlsoExpressions(x => true);
-            }
+                var query = _unitOfWork.BookingRepository.GetQueryable();
+                Expression<Func<Booking, bool>> filter = x => true;
 
-            if (!model.AccountId.IsNullOrGuidEmpty())
+                if (!string.IsNullOrEmpty(model.SearchTerm))
+                {
+                    filter = filter.CombineAndAlsoExpressions(x => true);
+                }
+
+                if (!model.AccountId.IsNullOrGuidEmpty())
+                {
+                    filter = filter.CombineAndAlsoExpressions(x => x.AccountId == model.AccountId);
+                }
+
+                if (!model.RoomId.IsNullOrGuidEmpty())
+                {
+                    filter = filter.CombineAndAlsoExpressions(x => x.RoomSlots.Any(rs => rs.RoomId == model.RoomId));
+                }
+
+                if (!model.ManagerId.IsNullOrGuidEmpty())
+                {
+                    filter = filter.CombineAndAlsoExpressions(x => x.ManagerId == model.ManagerId);
+                }
+
+                if (!model.DepartmentId.IsNullOrGuidEmpty())
+                {
+                    query = query.Include(x => x.RoomSlots).ThenInclude(x => x.Room);
+                    filter = filter.CombineAndAlsoExpressions(x =>
+                        x.RoomSlots.Any(rs => rs.Room.DepartmentId == model.DepartmentId));
+                }
+
+                if (model.BookingDate.HasValue)
+                {
+                    filter = filter.CombineAndAlsoExpressions(x => x.BookingDate == model.BookingDate.Value);
+                }
+
+                if (model.StartDate.HasValue)
+                {
+                    filter = filter.CombineAndAlsoExpressions(x => x.BookingDate >= model.StartDate.Value.Date);
+                }
+
+                if (model.EndDate.HasValue)
+                {
+                    filter = filter.CombineAndAlsoExpressions(x => x.BookingDate <= model.EndDate.Value.Date);
+                }
+
+                if (model.Status.HasValue)
+                {
+                    filter = filter.CombineAndAlsoExpressions(x => x.Status == model.Status);
+                }
+
+                query = query.Where(filter);
+                query = query.ApplySorting(model.IsDescending, Booking.GetSortValue(model.OrderBy));
+
+                return await query.ProjectToPaginatedListAsync<Booking, BookingModel>(model);
+            }
+            catch (Exception ex)
             {
-                filter = filter.CombineAndAlsoExpressions(x => x.AccountId == model.AccountId);
+                return Result<PaginationResult<BookingModel>>.Failure($"Failed to get bookings: {ex.Message}");
             }
-            
-            if (!model.RoomId.IsNullOrGuidEmpty())
-            {
-                filter = filter.CombineAndAlsoExpressions(x => x.RoomSlots.Any(rs => rs.RoomId == model.RoomId));
-            }
-
-            if (!model.ManagerId.IsNullOrGuidEmpty())
-            {
-                filter = filter.CombineAndAlsoExpressions(x => x.ManagerId == model.ManagerId);
-            }
-
-            if (!model.DepartmentId.IsNullOrGuidEmpty())
-            {
-                query = query.Include(x => x.RoomSlots).ThenInclude(x => x.Room);
-                filter = filter.CombineAndAlsoExpressions(x =>
-                    x.RoomSlots.Any(rs => rs.Room.DepartmentId == model.DepartmentId));
-            }
-
-            if (model.BookingDate.HasValue)
-            {
-                filter = filter.CombineAndAlsoExpressions(x => x.BookingDate == model.BookingDate.Value);
-            }
-
-            if (model.StartDate.HasValue)
-            {
-                filter = filter.CombineAndAlsoExpressions(x => x.BookingDate >= model.StartDate.Value.Date);
-            }
-
-            if (model.EndDate.HasValue)
-            {
-                filter = filter.CombineAndAlsoExpressions(x => x.BookingDate <= model.EndDate.Value.Date);
-            }
-
-            if (model.Status.HasValue)
-            {
-                filter = filter.CombineAndAlsoExpressions(x => x.Status == model.Status);
-            }
-
-            query = query.Where(filter);
-            query = query.ApplySorting(model.IsDescending, Booking.GetSortValue(model.OrderBy));
-
-            return await query.ProjectToPaginatedListAsync<Booking, BookingModel>(model);
         }
 
         public async Task<Result> UpdateAsync(BookingModel model)
@@ -149,7 +156,7 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             }
         }
 
-        public async Task<Result> UpdateStatusAsync(Guid id, BookingStatus status)
+        public async Task<Result> UpdateStatusAsync(Guid id, Guid managerId, BookingStatus status)
         {
             var entity = await _unitOfWork.BookingRepository.GetQueryable()
                 .FirstOrDefaultAsync(x => x.Id == id);
@@ -167,6 +174,7 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
 
             entity.Status = status;
             entity.UpdatedAt = DateTime.UtcNow;
+            entity.ManagerId = managerId;
 
             _unitOfWork.BookingRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();

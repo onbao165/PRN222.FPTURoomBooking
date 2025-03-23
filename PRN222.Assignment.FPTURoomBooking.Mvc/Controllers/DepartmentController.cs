@@ -10,7 +10,7 @@ using PRN222.Assignment.FPTURoomBooking.Services.Utils;
 
 namespace PRN222.Assignment.FPTURoomBooking.Mvc.Controllers;
 
-[Authorize]
+[Authorize(Roles = "User")]
 public class DepartmentController : Controller
 {
     private readonly IDepartmentService _departmentService;

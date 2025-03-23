@@ -1,117 +1,183 @@
 @page "/Booking"
 @rendermode InteractiveServer
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using PRN222.Assignment.FPTURoomBooking.Repositories.Models
 @using PRN222.Assignment.FPTURoomBooking.Services.Models.Booking
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@using PRN222.Assignment.FPTURoomBooking.Blazor.Components.Shared
 @using PRN222.Assignment.FPTURoomBooking.Services.Utils
-@attribute [Authorize(Roles = "Manager, Admin")]
 @inject IBookingService BookingService
-@inject IHttpContextAccessor HttpContextAccessor
+@inject IAccountService AccountService
 @inject NavigationManager NavigationManager
+@inject IHttpContextAccessor HttpContextAccessor
+@attribute [Authorize]
 
-<PageTitle>Booking Management</PageTitle>
+<PageTitle>Booking List</PageTitle>
 
-<div class="container-fluid mt-4">
-    <h2>Department Bookings</h2>
+<div class="container-fluid">
+    <h3 class="mb-4">Booking Management</h3>
 
-    @if (_loading)
-    {
-        <div class="text-center">
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h5 class="mb-0">Filters</h5>
+                </div>
             </div>
         </div>
-    }
-    else
-    {
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Booking Date</th>
-                        <th>Room</th>
-                        <th>Time Slot</th>
-                        <th>Requester</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @* @foreach (var booking in _bookings.Items) *@
-                    @* { *@
-                    @*     <tr> *@
-                    @*         <td>@booking.BookingDate.ToShortDateString()</td> *@
-                    @*         $1$ <td>@booking.Room.Name</td> #1# *@
-                    @*         $1$ <td>@booking.RoomSlot.StartTime - @booking.RoomSlot.EndTime</td> #1# *@
-                    @*         $1$ <td>@booking.Account.FullName</td> #1# *@
-                    @*         <td> *@
-                    @*             <span class="badge @GetStatusBadgeClass(booking.Status)"> *@
-                    @*                 @booking.Status *@
-                    @*             </span> *@
-                    @*         </td> *@
-                    @*         <td> *@
-                    @*             <button class="btn btn-sm btn-info me-2" @onclick="() => ViewDetails(booking.Id)"> *@
-                    @*                 Details *@
-                    @*             </button> *@
-                    @*             @if (booking.Status == BookingStatus.Pending) *@
-                    @*             { *@
-                    @*                 <button class="btn btn-sm btn-success me-2" @onclick="() => ApproveBooking(booking.Id)"> *@
-                    @*                     Approve *@
-                    @*                 </button> *@
-                    @*                 <button class="btn btn-sm btn-danger" @onclick="() => RejectBooking(booking.Id)"> *@
-                    @*                     Reject *@
-                    @*                 </button> *@
-                    @*             } *@
-                    @*         </td> *@
-                    @*     </tr> *@
-                    @* } *@
-                </tbody>
-            </table>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" @bind="_getModel.Status">
+                        <option value="">All Status</option>
+                        @foreach (var status in Enum.GetValues<BookingStatus>())
+                        {
+                            <option value="@status">@status</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" class="form-control" @bind="_getModel.StartDate"/>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">End Date</label>
+                    <input type="date" class="form-control" @bind="_getModel.EndDate"/>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Search</label>
+                    <input type="text"
+                           class="form-control"
+                           @bind="_getModel.SearchTerm"
+                           placeholder="Search..."/>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col">
+                    <button class="btn btn-primary" @onclick="ApplyFilters">Apply Filters</button>
+                    <button class="btn btn-secondary" @onclick="ResetFilters">Reset</button>
+                </div>
+            </div>
         </div>
+    </div>
 
-        <Pagination CurrentPage="@_currentPage" TotalPages="@_totalPages" OnPageChanged="@LoadBookings" />
-    }
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Booking List</h5>
+        </div>
+        <div class="card-body">
+            @if (_loading)
+            {
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (_bookings?.Items.Any() != true)
+            {
+                <div class="alert alert-info">No bookings found.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Booking Date</th>
+                            <th>Booked By</th>
+                            <th>Status</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var booking in _bookings.Items)
+                        {
+                            <tr>
+                                <td>@booking.Id.ToString().Substring(0, 8)...</td>
+                                <td>@booking.BookingDate.ToString("yyyy-MM-dd")</td>
+                                <td>@booking.Account.FullName</td>
+                                <td>
+                                        <span class="badge @GetStatusBadgeClass(booking.Status)">
+                                            @booking.Status
+                                        </span>
+                                </td>
+                                <td>@booking.CreatedAt.ToString("g")</td>
+                                <td>
+                                    <a href="/Booking/Details/@booking.Id" class="btn btn-sm btn-info">
+                                        Details
+                                    </a>
+                                    @if (booking.Status == BookingStatus.Pending)
+                                    {
+                                        <button class="btn btn-sm btn-danger"
+                                                @onclick="@(e => HandleRejectBooking(booking.Id))">
+                                            Reject
+                                        </button>
+                                        <button class="btn btn-sm btn-success"
+                                                @onclick="@(e => HandleApproveBooking(booking.Id))">
+                                            Approve
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+
+                <Pagination
+                    CurrentPage="@_getModel.PageNumber"
+                    TotalPages="@((_bookings.TotalItems + _getModel.PageSize - 1) / _getModel.PageSize)"
+                    OnPageChanged="HandlePageChanged"/>
+            }
+        </div>
+    </div>
 </div>
 
 @code {
-    // private PaginationResult<BookingModel> _bookings = new();
     private bool _loading = true;
-    private int _currentPage = 1;
-    private int _totalPages = 1;
-    private Guid _departmentId;
+    private PaginationResult<BookingModel>? _bookings;
+
+    private GetBookingModel _getModel = new()
+    {
+        PageSize = 10,
+        PageNumber = 1,
+        OrderBy = "bookingDate",
+        IsDescending = true
+    };
 
     protected override async Task OnInitializedAsync()
     {
         var user = HttpContextAccessor.HttpContext?.User;
         if (user?.Identity?.IsAuthenticated == true)
         {
-            // Get department ID from the logged-in manager's claims
-            var departmentIdClaim = user.FindFirst("DepartmentId")?.Value;
-            if (Guid.TryParse(departmentIdClaim, out var deptId))
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out Guid userGuid))
             {
-                _departmentId = deptId;
-                await LoadBookings(_currentPage);
+                var accountResult = await AccountService.GetAsync(userGuid);
+                if (accountResult.IsSuccess && accountResult.Data != null)
+                {
+                    _getModel.DepartmentId = accountResult.Data.DepartmentId;
+                }
             }
         }
+
+        await LoadBookings();
     }
 
-    private async Task LoadBookings(int page)
+    private async Task LoadBookings()
     {
         try
         {
             _loading = true;
-            var result = await BookingService.GetPagedAsync(new GetBookingModel
-            {
-                PageSize = 10,
-                DepartmentId = _departmentId
-            });
-
+            var result = await BookingService.GetPagedAsync(_getModel);
             if (result.IsSuccess)
             {
-                // _bookings = result.Data!;
-                // _currentPage = page;
-                // _totalPages = (int)Math.Ceiling(_bookings.TotalItems / 10.0);
+                _bookings = result.Data;
             }
         }
         finally
@@ -120,34 +186,91 @@
         }
     }
 
-    private void ViewDetails(Guid bookingId)
+    private async Task HandlePageChanged(int page)
     {
-        NavigationManager.NavigateTo($"/Booking/{bookingId}");
+        _getModel.PageNumber = page;
+        await LoadBookings();
     }
 
-    private async Task ApproveBooking(Guid bookingId)
+    private async Task ApplyFilters()
     {
-        var result = await BookingService.UpdateStatusAsync(bookingId, BookingStatus.Approved);
-        if (result.IsSuccess)
-        {
-            await LoadBookings(_currentPage);
-        }
+        _getModel.PageNumber = 1;
+        await LoadBookings();
     }
 
-    private async Task RejectBooking(Guid bookingId)
+    private async Task ResetFilters()
     {
-        var result = await BookingService.UpdateStatusAsync(bookingId, BookingStatus.Rejected);
-        if (result.IsSuccess)
+        _getModel = new GetBookingModel
         {
-            await LoadBookings(_currentPage);
-        }
+            PageSize = 10,
+            PageNumber = 1,
+            OrderBy = "bookingDate",
+            IsDescending = true,
+            DepartmentId = _getModel.DepartmentId,
+            ManagerId = _getModel.ManagerId
+        };
+        await LoadBookings();
     }
 
     private string GetStatusBadgeClass(BookingStatus status) => status switch
     {
-        BookingStatus.Pending => "bg-warning",
+        BookingStatus.Pending => "bg-warning text-dark",
         BookingStatus.Approved => "bg-success",
         BookingStatus.Rejected => "bg-danger",
-        _ => "bg-secondary"
+        BookingStatus.Cancelled => "bg-secondary",
+        _ => "bg-primary"
     };
+
+    private async Task HandleApproveBooking(Guid bookingId)
+    {
+        //Get Manager Id
+        var managerId = Guid.Empty;
+        var user = HttpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out Guid userGuid))
+            {
+                managerId = userGuid;
+            }
+        }
+
+        if (managerId == Guid.Empty)
+        {
+            return;
+        }
+
+        var result = await BookingService.UpdateStatusAsync(bookingId, managerId, BookingStatus.Approved);
+        if (result.IsSuccess)
+        {
+            await LoadBookings();
+        }
+    }
+
+    private async Task HandleRejectBooking(Guid bookingId)
+    {
+        //Get Manager Id
+        var managerId = Guid.Empty;
+        var user = HttpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out Guid userGuid))
+            {
+                managerId = userGuid;
+            }
+        }
+
+        if (managerId == Guid.Empty)
+        {
+            return;
+        }
+
+        var result = await BookingService.UpdateStatusAsync(bookingId, managerId, BookingStatus.Rejected);
+        if (result.IsSuccess)
+        {
+            await LoadBookings();
+        }
+    }
+
 }
