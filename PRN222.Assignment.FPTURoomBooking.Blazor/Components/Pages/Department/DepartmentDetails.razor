@@ -1,0 +1,145 @@
+@page "/Department/Create"
+@page "/Department/{Id:guid}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Department
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Campus
+@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@attribute [Authorize(Roles = "Admin")]
+@inject IDepartmentService DepartmentService
+@inject ICampusService CampusService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(_isNew ? "Create Department" : "Edit Department")</PageTitle>
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3>@(_isNew ? "Create Department" : "Edit Department")</h3>
+            <button class="btn btn-secondary" @onclick="GoBack">Back to List</button>
+        </div>
+        <div class="card-body">
+            @if (_loading)
+            {
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <EditForm Model="@_department" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <InputText @bind-Value="_department.Name" class="form-control" />
+                        <ValidationMessage For="@(() => _department.Name)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <InputTextArea @bind-Value="_department.Description" class="form-control" rows="3" />
+                        <ValidationMessage For="@(() => _department.Description)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Campus</label>
+                        <InputSelect @bind-Value="_department.CampusId" class="form-select">
+                            <option value="">Select Campus</option>
+                            @if (_campuses != null)
+                            {
+                                @foreach (var campus in _campuses)
+                                {
+                                    <option value="@campus.Id">@campus.Name</option>
+                                }
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _department.CampusId)" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        @(_isNew ? "Create" : "Save Changes")
+                    </button>
+                </EditForm>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Guid? Id { get; set; }
+
+    private DepartmentModel _department = new();
+    private List<CampusModel>? _campuses;
+    private bool _loading = true;
+    private bool _isNew => Id == null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCampuses();
+        
+        if (!_isNew)
+        {
+            await LoadDepartment();
+        }
+        else
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadCampuses()
+    {
+        var result = await CampusService.GetPagedAsync(new GetCampusModel
+        {
+            PageSize = 100 // Get all campuses for dropdown
+        });
+
+        if (result.IsSuccess)
+        {
+            _campuses = result.Data?.Items.ToList();
+        }
+    }
+
+    private async Task LoadDepartment()
+    {
+        try
+        {
+            _loading = true;
+            var result = await DepartmentService.GetAsync(Id!.Value);
+            if (result.IsSuccess)
+            {
+                _department = result.Data!;
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/Department");
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        var result = _isNew
+            ? await DepartmentService.CreateAsync(_department)
+            : await DepartmentService.UpdateAsync(_department);
+
+        if (result.IsSuccess)
+        {
+            NavigationManager.NavigateTo("/Department");
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/Department");
+    }
+}

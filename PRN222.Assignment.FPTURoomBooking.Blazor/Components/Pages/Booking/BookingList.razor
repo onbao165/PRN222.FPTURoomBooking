@@ -5,7 +5,7 @@
 @using PRN222.Assignment.FPTURoomBooking.Services.Models.Booking
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
 @using PRN222.Assignment.FPTURoomBooking.Services.Utils
-@attribute [Authorize(Roles = "Manager")]
+@attribute [Authorize(Roles = "Manager, Admin")]
 @inject IBookingService BookingService
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager NavigationManager

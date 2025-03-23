@@ -1,0 +1,131 @@
+@page "/User/Create"
+@page "/User/{Id:guid}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Account
+@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@attribute [Authorize(Roles = "Admin")]
+@inject IAccountService UserService
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(_isNew ? "Create User" : "Edit User")</PageTitle>
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3>@(_isNew ? "Create User" : "Edit User")</h3>
+            <button class="btn btn-secondary" @onclick="GoBack">Back to List</button>
+        </div>
+        <div class="card-body">
+            @if (_loading)
+            {
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <EditForm Model="@_user" OnValidSubmit="HandleSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <InputText @bind-Value="_user.Email" class="form-control" />
+                        <ValidationMessage For="@(() => _user.Email)" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Full Name</label>
+                        <InputText @bind-Value="_user.FullName" class="form-control" />
+                        <ValidationMessage For="@(() => _user.FullName)" />
+                    </div>
+
+                    @if (_isNew)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <InputText type="password" @bind-Value="_user.Password" class="form-control" />
+                            <ValidationMessage For="@(() => _user.Password)" />
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label">Role</label>
+                        <InputSelect @bind-Value="_user.Role" class="form-select">
+                            <option value="">Select Role</option>
+                            <option value="Admin">Admin</option>
+                            <option value="User">User</option>
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _user.Role)" />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        @(_isNew ? "Create" : "Save Changes")
+                    </button>
+                </EditForm>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Guid? Id { get; set; }
+
+    private AccountModel _user = new();
+    private bool _loading = true;
+    private bool _isNew => Id == null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!_isNew)
+        {
+            await LoadUser();
+        }
+        else
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadUser()
+    {
+        try
+        {
+            _loading = true;
+            var result = await UserService.GetAsync(Id!.Value);
+            if (result.IsSuccess)
+            {
+                _user = result.Data!;
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/User");
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        var result = _isNew
+            ? await UserService.CreateAsync(_user)
+            : await UserService.UpdateAsync(_user);
+
+        if (result.IsSuccess)
+        {
+            NavigationManager.NavigateTo("/User");
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/User");
+    }
+}

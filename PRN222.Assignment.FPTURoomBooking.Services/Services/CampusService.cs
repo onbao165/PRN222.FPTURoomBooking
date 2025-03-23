@@ -54,7 +54,7 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
 
             if (!string.IsNullOrEmpty(model.SearchTerm))
             {
-                filter = filter.CombineAndAlsoExpressions(x => true);
+                filter = filter.CombineAndAlsoExpressions(x => x.Name.Contains(model.SearchTerm));
             }
 
             query = query.Where(filter);
