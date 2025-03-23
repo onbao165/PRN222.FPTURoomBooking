@@ -1,13 +1,26 @@
 ﻿@inherits LayoutComponentBase
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@inject NavigationManager NavigationManager
+@inject IHttpContextAccessor HttpContextAccessor
 
 <div class="page">
     <div class="sidebar">
-        <NavMenu/>
+        <NavMenu />
     </div>
 
     <main>
         <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+            @if (isAuthenticated)
+            {
+                <span class="me-3">Welcome, @fullName!</span>
+                <button class="btn btn-link" @onclick="LogoutAsync">Logout</button>
+            }
+            else
+            {
+                <a href="/Account/Login">Login</a>
+            }
         </div>
 
         <article class="content px-4">
@@ -21,3 +34,25 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    private bool isAuthenticated = false;
+    private string fullName = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        var user = HttpContextAccessor.HttpContext?.User;
+        isAuthenticated = user?.Identity?.IsAuthenticated ?? false;
+
+        if (isAuthenticated)
+        {
+            fullName = user!.FindFirstValue("FullName") ?? user.FindFirstValue(ClaimTypes.Name) ?? "User";
+        }
+    }
+
+    private async Task LogoutAsync()
+    {
+        await HttpContextAccessor.HttpContext!.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        NavigationManager.NavigateTo("/Account/Login", true);
+    }
+}
