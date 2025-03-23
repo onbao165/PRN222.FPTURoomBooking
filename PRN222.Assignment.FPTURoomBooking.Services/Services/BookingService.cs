@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using Mapster;
+using Microsoft.EntityFrameworkCore;
 using PRN222.Assignment.FPTURoomBooking.Repositories.Models;
 using PRN222.Assignment.FPTURoomBooking.Repositories.UnitOfWork;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Booking;
@@ -65,6 +66,12 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             if (!model.ManagerId.IsNullOrGuidEmpty())
             {
                 filter = filter.CombineAndAlsoExpressions(x => x.ManagerId == model.ManagerId);
+            }
+            
+            if (!model.DepartmentId.IsNullOrGuidEmpty())
+            {
+                query = query.Include(x => x.RoomSlots).ThenInclude(x => x.Room);
+                filter = filter.CombineAndAlsoExpressions(x => x.RoomSlots.Any(rs => rs.Room.DepartmentId == model.DepartmentId));
             }
             
             if (model.Status.HasValue)

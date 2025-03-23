@@ -56,6 +56,16 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             {
                 filter = filter.CombineAndAlsoExpressions(x => true);
             }
+            
+            if (!model.RoomId.IsNullOrGuidEmpty())
+            {
+                filter = filter.CombineAndAlsoExpressions(x => x.RoomId == model.RoomId);
+            }
+            
+            if (!model.BookingId.IsNullOrGuidEmpty())
+            {
+                filter = filter.CombineAndAlsoExpressions(x => x.BookingId == model.BookingId);
+            }
 
             query = query.Where(filter);
             query = query.ApplySorting(model.IsDescending, RoomSlot.GetSortValue(model.OrderBy));
