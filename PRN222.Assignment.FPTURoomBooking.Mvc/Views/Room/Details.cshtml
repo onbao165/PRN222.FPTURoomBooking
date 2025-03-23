@@ -1,0 +1,37 @@
+@model PRN222.Assignment.FPTURoomBooking.Mvc.Models.RoomViewModel
+@{
+    ViewData["Title"] = "Room Details";
+}
+
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Home</a></li>
+                    <li class="breadcrumb-item"><a asp-controller="Room" asp-action="Index">Rooms</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Room Details</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Name:</strong> @Model.Name</p>
+                    <p><strong>Department:</strong> @Model.DepartmentName</p>
+                    <p><strong>Campus:</strong> @Model.CampusName</p>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+            <a asp-controller="Booking" asp-action="Create" asp-route-roomId="@Model.Id" class="btn btn-primary">Book This Room</a>
+        </div>
+    </div>
+</div> 

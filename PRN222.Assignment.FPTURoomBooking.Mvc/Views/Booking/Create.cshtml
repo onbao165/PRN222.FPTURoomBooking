@@ -1,0 +1,135 @@
+@model CreateBookingViewModel
+
+<h2>Create Booking</h2>
+
+<form asp-action="Create" method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label asp-for="BookingDate" class="control-label"></label>
+                <input asp-for="BookingDate" class="form-control" type="date" />
+                <span asp-validation-for="BookingDate" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="CampusId" class="control-label">Campus</label>
+                <select asp-for="CampusId" class="form-control"
+                        asp-items="@(new SelectList(ViewBag.Campuses, "Id", "Name"))">
+                    <option value="">-- Select Campus --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="DepartmentId" class="control-label">Department</label>
+                <select asp-for="DepartmentId" class="form-control"
+                        asp-items="@(new SelectList(ViewBag.Departments, "Id", "Name"))">
+                    <option value="">-- Select Department --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="RoomId" class="control-label">Room</label>
+                <select asp-for="RoomId" class="form-control"
+                        asp-items="@(new SelectList(ViewBag.Rooms, "Id", "Name"))">
+                    <option value="">-- Select Room --</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <h4>Available Room Slots</h4>
+            <div class="form-group available-slots-container">
+                @await Html.PartialAsync("_AvailableRoomSlotsPartial", Model)
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <input type="submit" value="Create Booking" class="btn btn-primary" />
+        <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+    </div>
+</form>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        function updateAvailableRoomSlots() {
+            const campusId = $('#CampusId').val();
+            const departmentId = $('#DepartmentId').val();
+            const roomId = $('#RoomId').val();
+            const bookingDate = $('#BookingDate').val();
+
+            // Show loading indicator
+            $('.available-slots-container').html('<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading available slots...</div>');
+
+            $.get('@Url.Action("GetAvailableRoomSlots", "Booking")', {
+                campusId: campusId,
+                departmentId: departmentId,
+                roomId: roomId,
+                bookingDate: bookingDate
+            }, function(response) {
+                $('.available-slots-container').html(response);
+            }).fail(function() {
+                $('.available-slots-container').html('<div class="alert alert-danger">Failed to load available slots.</div>');
+            });
+        }
+
+        $(document).ready(function() {
+            // Handle campus change
+            $('#CampusId').change(function() {
+                const campusId = $(this).val();
+                // Clear dependent dropdowns
+                $('#DepartmentId').empty().append($('<option></option>').val('').text('-- Select Department --'));
+                $('#RoomId').empty().append($('<option></option>').val('').text('-- Select Room --'));
+                
+                if (campusId) {
+                    // Update departments dropdown via AJAX
+                    $.get('@Url.Action("GetDepartments", "Booking")', { campusId: campusId }, function(data) {
+                        $.each(data, function(i, item) {
+                            $('#DepartmentId').append($('<option></option>').val(item.id).text(item.name));
+                        });
+                    });
+                }
+                updateAvailableRoomSlots();
+            });
+
+            // Handle department change
+            $('#DepartmentId').change(function() {
+                const departmentId = $(this).val();
+                // Clear room dropdown
+                $('#RoomId').empty().append($('<option></option>').val('').text('-- Select Room --'));
+                
+                if (departmentId) {
+                    // Update rooms dropdown via AJAX
+                    $.get('@Url.Action("GetRooms", "Booking")', { departmentId: departmentId }, function(data) {
+                        $.each(data, function(i, item) {
+                            $('#RoomId').append($('<option></option>').val(item.id).text(item.name));
+                        });
+                    });
+                }
+                updateAvailableRoomSlots();
+            });
+
+            // Handle room change
+            $('#RoomId').change(function() {
+                updateAvailableRoomSlots();
+            });
+
+            // Handle date change
+            $('#BookingDate').change(function() {
+                updateAvailableRoomSlots();
+            });
+
+            // Handle form submission
+            $('form').submit(function(e) {
+                const selectedSlots = $('input[type="checkbox"]:checked').length;
+                if (selectedSlots === 0) {
+                    e.preventDefault();
+                    alert('Please select at least one room slot.');
+                }
+            });
+        });
+    </script>
+} 

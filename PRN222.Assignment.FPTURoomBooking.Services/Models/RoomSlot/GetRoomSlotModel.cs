@@ -6,4 +6,5 @@ public class GetRoomSlotModel : PaginationParams
 {
     public Guid? RoomId { get; set; }
     public Guid? BookingId { get; set; }
+    public bool IncludeDeleted { get; set; } 
 }

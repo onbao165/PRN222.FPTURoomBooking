@@ -44,13 +44,11 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
 
         public async Task<Result<AccountModel>> GetAsync(Guid id)
         {
-            var entity = await _unitOfWork.AccountRepository.GetByIdAsync(id);
-            if (entity == null)
-            {
-                return Result<AccountModel>.Failure("Account not found");
-            }
-
-            return entity.Adapt<AccountModel>();
+            var entity = await _unitOfWork.AccountRepository.GetQueryable()
+                .Include(x => x.Department)
+                .ProjectToType<AccountModel>()
+                .FirstOrDefaultAsync(x => x.Id == id);
+            return entity ?? Result<AccountModel>.Failure("Account not found");
         }
 
         public async Task<Result<PaginationResult<AccountModel>>> GetPagedAsync(GetAccountModel model)

@@ -12,4 +12,6 @@ public class RoomSlotModel
     public TimeSlot TimeSlot { get; set; }
     public RoomModel Room { get; set; }
     public BookingModel Booking { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 }

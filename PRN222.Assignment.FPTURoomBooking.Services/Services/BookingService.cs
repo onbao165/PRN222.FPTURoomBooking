@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PRN222.Assignment.FPTURoomBooking.Repositories.Models;
 using PRN222.Assignment.FPTURoomBooking.Repositories.UnitOfWork;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Booking;
+using PRN222.Assignment.FPTURoomBooking.Services.Models.RoomSlot;
 using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces;
 using PRN222.Assignment.FPTURoomBooking.Services.Utils;
 
@@ -33,6 +34,7 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             {
                 return Result.Failure("Booking not found");
             }
+
             _unitOfWork.BookingRepository.Remove(entity);
             await _unitOfWork.SaveChangesAsync();
             return Result.Success();
@@ -40,12 +42,11 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
 
         public async Task<Result<BookingModel>> GetAsync(Guid id)
         {
-            var entity = await _unitOfWork.BookingRepository.GetByIdAsync(id);
-            if (entity == null)
-            {
-                return Result<BookingModel>.Failure("Booking not found");
-            }
-            return entity.Adapt<BookingModel>();
+            var entity = await _unitOfWork.BookingRepository.GetQueryable()
+                .Include(x => x.Account)
+                .ProjectToType<BookingModel>()
+                .FirstOrDefaultAsync(x => x.Id == id);
+            return entity ?? Result<BookingModel>.Failure("Booking not found");
         }
 
         public async Task<Result<PaginationResult<BookingModel>>> GetPagedAsync(GetBookingModel model)
@@ -57,23 +58,44 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             {
                 filter = filter.CombineAndAlsoExpressions(x => true);
             }
-            
+
             if (!model.AccountId.IsNullOrGuidEmpty())
             {
                 filter = filter.CombineAndAlsoExpressions(x => x.AccountId == model.AccountId);
             }
             
+            if (!model.RoomId.IsNullOrGuidEmpty())
+            {
+                filter = filter.CombineAndAlsoExpressions(x => x.RoomSlots.Any(rs => rs.RoomId == model.RoomId));
+            }
+
             if (!model.ManagerId.IsNullOrGuidEmpty())
             {
                 filter = filter.CombineAndAlsoExpressions(x => x.ManagerId == model.ManagerId);
             }
-            
+
             if (!model.DepartmentId.IsNullOrGuidEmpty())
             {
                 query = query.Include(x => x.RoomSlots).ThenInclude(x => x.Room);
-                filter = filter.CombineAndAlsoExpressions(x => x.RoomSlots.Any(rs => rs.Room.DepartmentId == model.DepartmentId));
+                filter = filter.CombineAndAlsoExpressions(x =>
+                    x.RoomSlots.Any(rs => rs.Room.DepartmentId == model.DepartmentId));
             }
-            
+
+            if (model.BookingDate.HasValue)
+            {
+                filter = filter.CombineAndAlsoExpressions(x => x.BookingDate == model.BookingDate.Value);
+            }
+
+            if (model.StartDate.HasValue)
+            {
+                filter = filter.CombineAndAlsoExpressions(x => x.BookingDate >= model.StartDate.Value.Date);
+            }
+
+            if (model.EndDate.HasValue)
+            {
+                filter = filter.CombineAndAlsoExpressions(x => x.BookingDate <= model.EndDate.Value.Date);
+            }
+
             if (model.Status.HasValue)
             {
                 filter = filter.CombineAndAlsoExpressions(x => x.Status == model.Status);
@@ -97,6 +119,34 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             _unitOfWork.BookingRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
             return Result.Success();
+        }
+
+        public async Task<Result<BookingModel>> CreateBookingWithRoomSlots(BookingModel booking,
+            IEnumerable<RoomSlotModel> roomSlots)
+        {
+            try
+            {
+                // Create booking
+                var bookingEntity = booking.Adapt<Booking>();
+                _unitOfWork.BookingRepository.Add(bookingEntity);
+
+                // Create room slots
+                foreach (var slot in roomSlots)
+                {
+                    var roomSlotEntity = slot.Adapt<RoomSlot>();
+                    _unitOfWork.RoomSlotRepository.Add(roomSlotEntity);
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+
+                // Return the created booking
+                var createdBooking = bookingEntity.Adapt<BookingModel>();
+                return createdBooking;
+            }
+            catch (Exception ex)
+            {
+                return Result<BookingModel>.Failure($"Failed to create booking: {ex.Message}");
+            }
         }
     }
 }

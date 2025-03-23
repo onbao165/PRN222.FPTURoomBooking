@@ -11,4 +11,6 @@ public class BookingModel
     public Guid AccountId { get; set; } // Booking belongs to an account
     public Guid? ManagerId { get; set; } // Booking is approved by an account
     public AccountModel Account { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 }
