@@ -3,8 +3,6 @@
 @using PRN222.Assignment.FPTURoomBooking.Blazor.Models
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
 @using System.Security.Claims
-@using Microsoft.AspNetCore.Authentication
-@using Microsoft.AspNetCore.Authentication.Cookies
 @using PRN222.Assignment.FPTURoomBooking.Repositories.Models
 @inject IAccountService AccountService
 @inject NavigationManager NavigationManager
@@ -19,20 +17,20 @@
             </div>
             <div class="card-body">
                 <EditForm Model="@_loginModel" OnValidSubmit="@HandleValidSubmit" FormName="loginForm">
-                    <DataAnnotationsValidator/>
-                    <ValidationSummary/>
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
 
                     <div class="form-group mb-3">
                         <label for="email">Email</label>
-                        <InputText id="email" @bind-Value="@_loginModel.Email" class="form-control"/>
-                        <ValidationMessage For="@(() => _loginModel.Email)"/>
+                        <InputText id="email" @bind-Value="@_loginModel.Email" class="form-control" />
+                        <ValidationMessage For="@(() => _loginModel.Email)" />
                     </div>
 
                     <div class="form-group mb-3">
                         <label for="password">Password</label>
                         <InputText id="password" type="password" @bind-Value="@_loginModel.Password"
-                                   class="form-control"/>
-                        <ValidationMessage For="@(() => _loginModel.Password)"/>
+                            class="form-control" />
+                        <ValidationMessage For="@(() => _loginModel.Password)" />
                     </div>
 
                     @if (!string.IsNullOrEmpty(_errorMessage))
@@ -80,21 +78,21 @@
 
                 // Create authentication claims
                 var claims = new List<Claim>
-                {
-                    new Claim(ClaimTypes.NameIdentifier, account!.Username),
-                    new Claim(ClaimTypes.Name, account.FullName),
-                    new Claim(ClaimTypes.Email, account.Email),
-                    new Claim(ClaimTypes.Role, account.Role.ToString()),
-                };
+{
+new Claim(ClaimTypes.NameIdentifier, account!.Username),
+new Claim(ClaimTypes.Name, account.FullName),
+new Claim(ClaimTypes.Email, account.Email),
+new Claim(ClaimTypes.Role, account.Role.ToString()),
+};
 
 
                 // Use NavigationManager to redirect with a full page reload before authentication
                 NavigationManager.NavigateTo("/Account/LoginProcessor?" +
-                                             $"username={Uri.EscapeDataString(account.Username)}&" +
-                                             $"fullname={Uri.EscapeDataString(account.FullName)}&" +
-                                             $"email={Uri.EscapeDataString(account.Email)}&" +
-                                             $"role={Uri.EscapeDataString(account.Role.ToString())}",
-                    forceLoad: true);
+                $"username={Uri.EscapeDataString(account.Username)}&" +
+                $"fullname={Uri.EscapeDataString(account.FullName)}&" +
+                $"email={Uri.EscapeDataString(account.Email)}&" +
+                $"role={Uri.EscapeDataString(account.Role.ToString())}",
+                forceLoad: true);
             }
             else
             {
