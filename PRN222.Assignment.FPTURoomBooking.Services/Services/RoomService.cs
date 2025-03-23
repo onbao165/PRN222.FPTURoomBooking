@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using Mapster;
+using Microsoft.EntityFrameworkCore;
 using PRN222.Assignment.FPTURoomBooking.Repositories.Models;
 using PRN222.Assignment.FPTURoomBooking.Repositories.UnitOfWork;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Room;
@@ -39,12 +40,11 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
 
         public async Task<Result<RoomModel>> GetAsync(Guid id)
         {
-            var entity = await _unitOfWork.RoomRepository.GetByIdAsync(id);
-            if (entity == null)
-            {
-                return Result<RoomModel>.Failure("Room not found");
-            }
-            return entity.Adapt<RoomModel>();
+            var entity = await _unitOfWork.RoomRepository.GetQueryable()
+                .Include(x => x.Department)
+                .ProjectToType<RoomModel>()
+                .FirstOrDefaultAsync(x => x.Id == id);
+            return entity ?? Result<RoomModel>.Failure("Room not found");
         }
 
         public async Task<Result<PaginationResult<RoomModel>>> GetPagedAsync(GetRoomModel model)
@@ -60,6 +60,11 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             if (!model.DepartmentId.IsNullOrGuidEmpty())
             {
                 filter = filter.CombineAndAlsoExpressions(x => x.DepartmentId == model.DepartmentId);
+            }
+            
+            if (!model.CampusId.IsNullOrGuidEmpty())
+            {
+                filter = filter.CombineAndAlsoExpressions(x => x.Department.CampusId == model.CampusId);
             }
 
             query = query.Where(filter);

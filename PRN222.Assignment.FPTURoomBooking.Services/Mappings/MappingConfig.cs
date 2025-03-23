@@ -15,18 +15,28 @@ public class MappingConfig
         TypeAdapterConfig<Account, AccountModel>.NewConfig()
             .Ignore(dest => dest.Password); // Ignore password when mapping from Account to AccountModel
         TypeAdapterConfig<AccountModel, Account>.NewConfig()
-            .Ignore(dest => dest.Department);
+            .Ignore(dest => dest.Department)
+            .Ignore(dest => dest.CreatedAt)
+            .Ignore(dest => dest.UpdatedAt);
 
         TypeAdapterConfig<BookingModel, Booking>.NewConfig()
-            .Ignore(dest => dest.Account);
-
+            .Ignore(dest => dest.Account)
+            .Ignore(dest => dest.CreatedAt)
+            .Ignore(dest => dest.UpdatedAt);
+        
         TypeAdapterConfig<DepartmentModel, Department>.NewConfig()
-            .Ignore(dest => dest.Campus);
+            .Ignore(dest => dest.Campus)
+            .Ignore(dest => dest.CreatedAt)
+            .Ignore(dest => dest.UpdatedAt);
 
         TypeAdapterConfig<RoomModel, Room>.NewConfig()
-            .Ignore(dest => dest.Department);
+            .Ignore(dest => dest.Department)
+            .Ignore(dest => dest.CreatedAt)
+            .Ignore(dest => dest.UpdatedAt);
 
         TypeAdapterConfig<RoomSlotModel, RoomSlot>.NewConfig()
-            .Ignore(dest => dest.Room);
+            .Ignore(dest => dest.Room)
+            .Ignore(dest => dest.CreatedAt)
+            .Ignore(dest => dest.UpdatedAt);
     }
 }

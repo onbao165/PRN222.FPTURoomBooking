@@ -9,4 +9,6 @@ public class DepartmentModel
     public string? Description { get; set; }
     public Guid CampusId { get; set; } // Department belongs to a campus
     public CampusModel Campus { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 }

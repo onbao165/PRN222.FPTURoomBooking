@@ -9,4 +9,6 @@ public class RoomModel
     public string? Description { get; set; }
     public Guid DepartmentId { get; set; }
     public DepartmentModel Department { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 }

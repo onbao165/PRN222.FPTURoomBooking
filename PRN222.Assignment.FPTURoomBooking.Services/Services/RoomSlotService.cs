@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using Mapster;
+using Microsoft.EntityFrameworkCore;
 using PRN222.Assignment.FPTURoomBooking.Repositories.Models;
 using PRN222.Assignment.FPTURoomBooking.Repositories.UnitOfWork;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.RoomSlot;
@@ -39,12 +40,12 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
 
         public async Task<Result<RoomSlotModel>> GetAsync(Guid id)
         {
-            var entity = await _unitOfWork.RoomSlotRepository.GetByIdAsync(id);
-            if (entity == null)
-            {
-                return Result<RoomSlotModel>.Failure("RoomSlot not found");
-            }
-            return entity.Adapt<RoomSlotModel>();
+            var entity = await _unitOfWork.RoomSlotRepository.GetQueryable()
+                .Include(x => x.Room)
+                .Include(x => x.Booking)
+                .ProjectToType<RoomSlotModel>()
+                .FirstOrDefaultAsync(x => x.Id == id);
+            return entity ?? Result<RoomSlotModel>.Failure("RoomSlot not found");
         }
 
         public async Task<Result<PaginationResult<RoomSlotModel>>> GetPagedAsync(GetRoomSlotModel model)
@@ -65,6 +66,11 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             if (!model.BookingId.IsNullOrGuidEmpty())
             {
                 filter = filter.CombineAndAlsoExpressions(x => x.BookingId == model.BookingId);
+            }
+            
+            if (model.IncludeDeleted)
+            {
+                query = query.IgnoreQueryFilters();
             }
 
             query = query.Where(filter);

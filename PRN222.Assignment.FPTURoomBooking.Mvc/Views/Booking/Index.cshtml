@@ -1,0 +1,315 @@
+@model BookingListViewModel
+@using PRN222.Assignment.FPTURoomBooking.Repositories.Models
+
+@{
+    ViewData["Title"] = "My Bookings";
+}
+
+<div class="container-fluid">
+    <h1 class="mt-4">My Bookings</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <i class="fas fa-calendar-alt me-1"></i>
+                Search and Filter Bookings
+            </div>
+            <div>
+                <a asp-action="Create" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> New Booking
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <form asp-action="Index" method="get" id="filterForm">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label asp-for="SearchTerm" class="control-label">Search</label>
+                            <input asp-for="SearchTerm" class="form-control" placeholder="Search..." />
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label asp-for="Status" class="control-label">Status</label>
+                            <select asp-for="Status" asp-items="ViewBag.Statuses" class="form-control">
+                                <option value="">All Statuses</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="control-label">Booking Date Range</label>
+                            <div class="input-group">
+                                <input asp-for="StartDate" type="date" class="form-control" />
+                                <span class="input-group-text">to</span>
+                                <input asp-for="EndDate" type="date" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label asp-for="OrderBy" class="control-label">Order By</label>
+                            <select asp-for="OrderBy" class="form-control">
+                                <option value="bookingDate">Booking Date</option>
+                                <option value="createdAt">Creation Date</option>
+                                <option value="status">Status</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label asp-for="IsDescending" class="control-label">Direction</label>
+                            <select asp-for="IsDescending" class="form-control">
+                                <option value="false">Ascending</option>
+                                <option value="true">Descending</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label asp-for="PageSize" class="control-label">Page Size</label>
+                            <select asp-for="PageSize" class="form-control">
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+                
+                <input type="hidden" asp-for="PageNumber" value="1" />
+            </form>
+        </div>
+    </div>
+    
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-table me-1"></i>
+            Booking List
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Booking Date</th>
+                            <th>Status</th>
+                            <th>Created At</th>
+                            <th>Room Count</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Bookings.Items.Any())
+                        {
+                            foreach (var booking in Model.Bookings.Items)
+                            {
+                                <tr>
+                                    <td>@booking.Id.ToString().Substring(0, 8)...</td>
+                                    <td>@booking.BookingDate.ToString("yyyy-MM-dd")</td>
+                                    <td>
+                                        @switch (booking.Status)
+                                        {
+                                            case BookingStatus.Pending:
+                                                <span class="badge bg-warning text-dark">Pending</span>
+                                                break;
+                                            case BookingStatus.Approved:
+                                                <span class="badge bg-success">Approved</span>
+                                                break;
+                                            case BookingStatus.Rejected:
+                                                <span class="badge bg-danger">Rejected</span>
+                                                break;
+                                            case BookingStatus.Cancelled:
+                                                <span class="badge bg-secondary">Cancelled</span>
+                                                break;
+                                            default:
+                                                <span class="badge bg-info">@booking.Status</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>@booking.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td>@booking.RoomSlots.Count</td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a asp-action="Details" asp-route-id="@booking.Id" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i> Details
+                                            </a>
+                                            @if (booking.Status == BookingStatus.Pending)
+                                            {
+                                                <a asp-action="Edit" asp-route-id="@booking.Id" class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </a>
+                                                <button type="button" class="btn btn-sm btn-warning" 
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#cancelModal@(booking.Id)">
+                                                    <i class="fas fa-ban"></i> Cancel
+                                                </button>
+                                            }
+                                        </div>
+
+                                        @if (booking.Status == BookingStatus.Pending)
+                                        {
+                                            <!-- Cancel Modal for each booking -->
+                                            <div class="modal fade" id="cancelModal@(booking.Id)" tabindex="-1" 
+                                                 aria-labelledby="cancelModalLabel@(booking.Id)" aria-hidden="true">
+                                                <div class="modal-dialog">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title" id="cancelModalLabel@(booking.Id)">Cancel Booking</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <form asp-action="Cancel" asp-route-id="@booking.Id" method="post">
+                                                            <div class="modal-body">
+                                                                <p>Are you sure you want to cancel this booking?</p>
+                                                                <p class="text-warning">
+                                                                    <i class="fas fa-exclamation-triangle"></i> 
+                                                                    This action cannot be undone.
+                                                                </p>
+                                                                @Html.AntiForgeryToken()
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                                                <button type="submit" class="btn btn-warning">Cancel Booking</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center">No bookings found.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            
+            @if (Model.Bookings.TotalPages > 1)
+            {
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center">
+                        @if (Model.Bookings.HasPreviousPage)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" href="javascript:void(0)" onclick="setPage(@(Model.Bookings.PageNumber - 1))">
+                                    <i class="fas fa-angle-left"></i>
+                                </a>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="fas fa-angle-left"></i></span>
+                            </li>
+                        }
+                        
+                        @{
+                            const int maxPagesToShow = 5;
+                            var startPage = Math.Max(1, Model.Bookings.PageNumber - maxPagesToShow / 2);
+                            var endPage = Math.Min(Model.Bookings.TotalPages, startPage + maxPagesToShow - 1);
+                            
+                            if (startPage > 1)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" href="javascript:void(0)" onclick="setPage(1)">1</a>
+                                </li>
+                                if (startPage > 2)
+                                {
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                }
+                            }
+                            
+                            for (var i = startPage; i <= endPage; i++)
+                            {
+                                if (i == Model.Bookings.PageNumber)
+                                {
+                                    <li class="page-item active">
+                                        <span class="page-link">@i</span>
+                                    </li>
+                                }
+                                else
+                                {
+                                    <li class="page-item">
+                                        <a class="page-link" href="javascript:void(0)" onclick="setPage(@i)">@i</a>
+                                    </li>
+                                }
+                            }
+                            
+                            if (endPage < Model.Bookings.TotalPages)
+                            {
+                                if (endPage < Model.Bookings.TotalPages - 1)
+                                {
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                }
+                                <li class="page-item">
+                                    <a class="page-link" href="javascript:void(0)" onclick="setPage(@Model.Bookings.TotalPages)">@Model.Bookings.TotalPages</a>
+                                </li>
+                            }
+                        }
+                        
+                        @if (Model.Bookings.HasNextPage)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" href="javascript:void(0)" onclick="setPage(@(Model.Bookings.PageNumber + 1))">
+                                    <i class="fas fa-angle-right"></i>
+                                </a>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="fas fa-angle-right"></i></span>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function setPage(pageNumber) {
+            document.getElementById('PageNumber').value = pageNumber;
+            document.getElementById('filterForm').submit();
+        }
+    </script>
+} 

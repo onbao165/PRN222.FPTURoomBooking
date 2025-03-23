@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using Mapster;
+using Microsoft.EntityFrameworkCore;
 using PRN222.Assignment.FPTURoomBooking.Repositories.Models;
 using PRN222.Assignment.FPTURoomBooking.Repositories.UnitOfWork;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Department;
@@ -39,12 +40,11 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
 
         public async Task<Result<DepartmentModel>> GetAsync(Guid id)
         {
-            var entity = await _unitOfWork.DepartmentRepository.GetByIdAsync(id);
-            if (entity == null)
-            {
-                return Result<DepartmentModel>.Failure("Department not found");
-            }
-            return entity.Adapt<DepartmentModel>();
+            var entity = await _unitOfWork.DepartmentRepository.GetQueryable()
+                .Include(x => x.Campus)
+                .ProjectToType<DepartmentModel>()
+                .FirstOrDefaultAsync(x => x.Id == id);
+            return entity ?? Result<DepartmentModel>.Failure("Department not found");
         }
 
         public async Task<Result<PaginationResult<DepartmentModel>>> GetPagedAsync(GetDepartmentModel model)
