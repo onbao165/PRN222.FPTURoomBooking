@@ -15,6 +15,7 @@
             @if (isAuthenticated)
             {
                 <span class="me-3">Welcome, @fullName!</span>
+                <a href="/Account/Profile" class="me-3">Profile</a>
                 <button class="btn btn-link" @onclick="LogoutAsync">Logout</button>
             }
             else

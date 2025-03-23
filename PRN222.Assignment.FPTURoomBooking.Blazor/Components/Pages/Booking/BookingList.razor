@@ -1,0 +1,153 @@
+@page "/Booking"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using PRN222.Assignment.FPTURoomBooking.Repositories.Models
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Booking
+@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@using PRN222.Assignment.FPTURoomBooking.Services.Utils
+@attribute [Authorize(Roles = "Manager")]
+@inject IBookingService BookingService
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager NavigationManager
+
+<PageTitle>Booking Management</PageTitle>
+
+<div class="container-fluid mt-4">
+    <h2>Department Bookings</h2>
+
+    @if (_loading)
+    {
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Booking Date</th>
+                        <th>Room</th>
+                        <th>Time Slot</th>
+                        <th>Requester</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @* @foreach (var booking in _bookings.Items) *@
+                    @* { *@
+                    @*     <tr> *@
+                    @*         <td>@booking.BookingDate.ToShortDateString()</td> *@
+                    @*         $1$ <td>@booking.Room.Name</td> #1# *@
+                    @*         $1$ <td>@booking.RoomSlot.StartTime - @booking.RoomSlot.EndTime</td> #1# *@
+                    @*         $1$ <td>@booking.Account.FullName</td> #1# *@
+                    @*         <td> *@
+                    @*             <span class="badge @GetStatusBadgeClass(booking.Status)"> *@
+                    @*                 @booking.Status *@
+                    @*             </span> *@
+                    @*         </td> *@
+                    @*         <td> *@
+                    @*             <button class="btn btn-sm btn-info me-2" @onclick="() => ViewDetails(booking.Id)"> *@
+                    @*                 Details *@
+                    @*             </button> *@
+                    @*             @if (booking.Status == BookingStatus.Pending) *@
+                    @*             { *@
+                    @*                 <button class="btn btn-sm btn-success me-2" @onclick="() => ApproveBooking(booking.Id)"> *@
+                    @*                     Approve *@
+                    @*                 </button> *@
+                    @*                 <button class="btn btn-sm btn-danger" @onclick="() => RejectBooking(booking.Id)"> *@
+                    @*                     Reject *@
+                    @*                 </button> *@
+                    @*             } *@
+                    @*         </td> *@
+                    @*     </tr> *@
+                    @* } *@
+                </tbody>
+            </table>
+        </div>
+
+        <Pagination CurrentPage="@_currentPage" TotalPages="@_totalPages" OnPageChanged="@LoadBookings" />
+    }
+</div>
+
+@code {
+    // private PaginationResult<BookingModel> _bookings = new();
+    private bool _loading = true;
+    private int _currentPage = 1;
+    private int _totalPages = 1;
+    private Guid _departmentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = HttpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            // Get department ID from the logged-in manager's claims
+            var departmentIdClaim = user.FindFirst("DepartmentId")?.Value;
+            if (Guid.TryParse(departmentIdClaim, out var deptId))
+            {
+                _departmentId = deptId;
+                await LoadBookings(_currentPage);
+            }
+        }
+    }
+
+    private async Task LoadBookings(int page)
+    {
+        try
+        {
+            _loading = true;
+            var result = await BookingService.GetPagedAsync(new GetBookingModel
+            {
+                PageSize = 10,
+                DepartmentId = _departmentId
+            });
+
+            if (result.IsSuccess)
+            {
+                // _bookings = result.Data!;
+                // _currentPage = page;
+                // _totalPages = (int)Math.Ceiling(_bookings.TotalItems / 10.0);
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ViewDetails(Guid bookingId)
+    {
+        NavigationManager.NavigateTo($"/Booking/{bookingId}");
+    }
+
+    private async Task ApproveBooking(Guid bookingId)
+    {
+        var result = await BookingService.UpdateStatusAsync(bookingId, BookingStatus.Approved);
+        if (result.IsSuccess)
+        {
+            await LoadBookings(_currentPage);
+        }
+    }
+
+    private async Task RejectBooking(Guid bookingId)
+    {
+        var result = await BookingService.UpdateStatusAsync(bookingId, BookingStatus.Rejected);
+        if (result.IsSuccess)
+        {
+            await LoadBookings(_currentPage);
+        }
+    }
+
+    private string GetStatusBadgeClass(BookingStatus status) => status switch
+    {
+        BookingStatus.Pending => "bg-warning",
+        BookingStatus.Approved => "bg-success",
+        BookingStatus.Rejected => "bg-danger",
+        _ => "bg-secondary"
+    };
+}

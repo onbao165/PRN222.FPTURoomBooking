@@ -1,0 +1,162 @@
+@page "/Booking/{Id:guid}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using PRN222.Assignment.FPTURoomBooking.Repositories.Models
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Booking
+@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@attribute [Authorize(Roles = "Manager")]
+@inject IBookingService BookingService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Booking Details</PageTitle>
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3>Booking Details</h3>
+            <button class="btn btn-secondary" @onclick="GoBack">Back to List</button>
+        </div>
+        <div class="card-body">
+            @if (_loading)
+            {
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            @* else if (_booking != null) *@
+            @* { *@
+            @*     <div class="row"> *@
+            @*         <div class="col-md-6"> *@
+            @*             <h4>Booking Information</h4> *@
+            @*             <dl class="row"> *@
+            @*                 <dt class="col-sm-4">Booking Date</dt> *@
+            @*                 <dd class="col-sm-8">@_booking.BookingDate.ToShortDateString()</dd> *@
+            @* *@
+            @*                 <dt class="col-sm-4">Status</dt> *@
+            @*                 <dd class="col-sm-8"> *@
+            @*                     <span class="badge @GetStatusBadgeClass(_booking.Status)"> *@
+            @*                         @_booking.Status *@
+            @*                     </span> *@
+            @*                 </dd> *@
+            @* *@
+            @*                 <dt class="col-sm-4">Created At</dt> *@
+            @*                 <dd class="col-sm-8">@_booking.CreatedAt.ToString("g")</dd> *@
+            @*             </dl> *@
+            @*         </div> *@
+            @*         <div class="col-md-6"> *@
+            @*             <h4>Room Information</h4> *@
+            @*             <dl class="row"> *@
+            @*                 <dt class="col-sm-4">Room</dt> *@
+            @*                 <dd class="col-sm-8">@_booking.Room.Name</dd> *@
+            @* *@
+            @*                 <dt class="col-sm-4">Time Slot</dt> *@
+            @*                 <dd class="col-sm-8">@_booking.RoomSlot.StartTime - @_booking.RoomSlot.EndTime</dd> *@
+            @* *@
+            @*                 <dt class="col-sm-4">Campus</dt> *@
+            @*                 <dd class="col-sm-8">@_booking.Room.Campus.Name</dd> *@
+            @*             </dl> *@
+            @*         </div> *@
+            @*     </div> *@
+            @* *@
+            @*     <div class="row mt-4"> *@
+            @*         <div class="col-md-6"> *@
+            @*             <h4>Requester Information</h4> *@
+            @*             <dl class="row"> *@
+            @*                 <dt class="col-sm-4">Name</dt> *@
+            @*                 <dd class="col-sm-8">@_booking.Account.FullName</dd> *@
+            @* *@
+            @*                 <dt class="col-sm-4">Email</dt> *@
+            @*                 <dd class="col-sm-8">@_booking.Account.Email</dd> *@
+            @* *@
+            @*                 <dt class="col-sm-4">Department</dt> *@
+            @*                 <dd class="col-sm-8">@_booking.Account.Department?.Name</dd> *@
+            @*             </dl> *@
+            @*         </div> *@
+            @*     </div> *@
+            @* *@
+            @*     @if (_booking.Status == BookingStatus.Pending) *@
+            @*     { *@
+            @*         <div class="row mt-4"> *@
+            @*             <div class="col-12"> *@
+            @*                 <button class="btn btn-success me-2" @onclick="() => ApproveBooking(_booking.Id)"> *@
+            @*                     Approve Booking *@
+            @*                 </button> *@
+            @*                 <button class="btn btn-danger" @onclick="() => RejectBooking(_booking.Id)"> *@
+            @*                     Reject Booking *@
+            @*                 </button> *@
+            @*             </div> *@
+            @*         </div> *@
+            @*     } *@
+            @* } *@
+            else
+            {
+                <div class="alert alert-danger">
+                    Booking not found.
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private BookingModel? _booking;
+    private bool _loading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadBooking();
+    }
+
+    private async Task LoadBooking()
+    {
+        try
+        {
+            _loading = true;
+            var result = await BookingService.GetAsync(Id);
+            if (result.IsSuccess)
+            {
+                _booking = result.Data;
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ApproveBooking(Guid bookingId)
+    {
+        var result = await BookingService.UpdateStatusAsync(bookingId, BookingStatus.Approved);
+        if (result.IsSuccess)
+        {
+            await LoadBooking();
+        }
+    }
+
+    private async Task RejectBooking(Guid bookingId)
+    {
+        var result = await BookingService.UpdateStatusAsync(bookingId, BookingStatus.Rejected);
+        if (result.IsSuccess)
+        {
+            await LoadBooking();
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/Booking");
+    }
+
+    private string GetStatusBadgeClass(BookingStatus status) => status switch
+    {
+        BookingStatus.Pending => "bg-warning",
+        BookingStatus.Approved => "bg-success",
+        BookingStatus.Rejected => "bg-danger",
+        _ => "bg-secondary"
+    };
+}

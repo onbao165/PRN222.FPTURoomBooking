@@ -57,23 +57,23 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             {
                 filter = filter.CombineAndAlsoExpressions(x => true);
             }
-            
+
             if (!model.AccountId.IsNullOrGuidEmpty())
             {
                 filter = filter.CombineAndAlsoExpressions(x => x.AccountId == model.AccountId);
             }
-            
+
             if (!model.ManagerId.IsNullOrGuidEmpty())
             {
                 filter = filter.CombineAndAlsoExpressions(x => x.ManagerId == model.ManagerId);
             }
-            
+
             if (!model.DepartmentId.IsNullOrGuidEmpty())
             {
                 query = query.Include(x => x.RoomSlots).ThenInclude(x => x.Room);
                 filter = filter.CombineAndAlsoExpressions(x => x.RoomSlots.Any(rs => rs.Room.DepartmentId == model.DepartmentId));
             }
-            
+
             if (model.Status.HasValue)
             {
                 filter = filter.CombineAndAlsoExpressions(x => x.Status == model.Status);
@@ -96,6 +96,31 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             entity = model.Adapt(entity);
             _unitOfWork.BookingRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
+            return Result.Success();
+        }
+
+        public async Task<Result> UpdateStatusAsync(Guid id, BookingStatus status)
+        {
+            var entity = await _unitOfWork.BookingRepository.GetQueryable()
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (entity == null)
+            {
+                return Result.Failure("Booking not found");
+            }
+
+            // Only allow updating status if current status is Pending
+            if (entity.Status != BookingStatus.Pending)
+            {
+                return Result.Failure("Can only update status of pending bookings");
+            }
+
+            entity.Status = status;
+            entity.UpdatedAt = DateTime.UtcNow;
+
+            _unitOfWork.BookingRepository.Update(entity);
+            await _unitOfWork.SaveChangesAsync();
+
             return Result.Success();
         }
     }

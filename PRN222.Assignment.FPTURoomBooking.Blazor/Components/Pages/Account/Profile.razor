@@ -1,0 +1,91 @@
+@page "/Account/Profile"
+@rendermode InteractiveServer
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Account
+@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@inject IAccountService AccountService
+@inject IHttpContextAccessor HttpContextAccessor
+@attribute [Authorize]
+
+<PageTitle>Profile</PageTitle>
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h3>Profile Information</h3>
+        </div>
+        <div class="card-body">
+            @if (_loading)
+            {
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (_account != null)
+            {
+                <div class="row mb-3">
+                    <div class="col-md-3 fw-bold">Username:</div>
+                    <div class="col-md-9">@_account.Username</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3 fw-bold">Full Name:</div>
+                    <div class="col-md-9">@_account.FullName</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3 fw-bold">Email:</div>
+                    <div class="col-md-9">@_account.Email</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3 fw-bold">Department:</div>
+                    <div class="col-md-9">@(_account.Department?.Name ?? "N/A")</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3 fw-bold">Campus:</div>
+                    <div class="col-md-9">@(_account.Department?.Campus?.Name ?? "N/A")</div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-3 fw-bold">Role:</div>
+                    <div class="col-md-9">@_account.Role</div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-danger">
+                    Unable to load profile information.
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private AccountModel? _account;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var user = HttpContextAccessor.HttpContext?.User;
+            if (user?.Identity?.IsAuthenticated == true)
+            {
+                var email = user.FindFirst(ClaimTypes.Email)?.Value;
+                if (!string.IsNullOrEmpty(email))
+                {
+                    var result = await AccountService.GetByEmailAsync(email);
+                    if (result.IsSuccess)
+                    {
+                        _account = result.Data;
+                    }
+                }
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
