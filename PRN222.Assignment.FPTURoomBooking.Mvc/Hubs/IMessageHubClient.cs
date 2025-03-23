@@ -7,4 +7,5 @@ public interface IMessageHubClient
     Task ReceiveCampusUpdate();
     Task ReceiveDepartmentUpdate();
     Task ReceiveRoomUpdate();
+    // Task SendAsync(string message,string message2);
 }

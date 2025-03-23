@@ -7,11 +7,17 @@
 @using PRN222.Assignment.FPTURoomBooking.Repositories.Models
 @using PRN222.Assignment.FPTURoomBooking.Services.Models.RoomSlot
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@using Microsoft.AspNetCore.SignalR
+@using Microsoft.AspNetCore.SignalR.Client
+@using PRN222.Assignment.FPTURoomBooking.Blazor.Components.Layout
+@using PRN222.Assignment.FPTURoomBooking.Blazor.Hubs
 
 @inject IBookingService BookingService
 @inject IRoomSlotService RoomSlotService
 @inject NavigationManager NavigationManager
 @inject IHttpContextAccessor HttpContextAccessor
+@inject IHubContext<MessageHub> MessageHubContext
+@inject HubConnection HubConnection
 @attribute [Authorize]
 
 <PageTitle>Booking Details</PageTitle>
@@ -118,13 +124,16 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var user = HttpContextAccessor.HttpContext?.User;
-        if (user?.Identity?.IsAuthenticated == true)
+        if (HubConnection.State == HubConnectionState.Disconnected)
         {
-            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out Guid userGuid))
+            try
             {
-                _currentUserId = userGuid;
+                await HubConnection.StartAsync();
+                Console.WriteLine("Connected to SignalR hub");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error connecting to SignalR: {ex.Message}");
             }
         }
 
@@ -160,7 +169,7 @@
             if (roomSlotsResult.IsSuccess && roomSlotsResult.Data?.Items != null)
             {
                 _booking.RoomSlots = roomSlotsResult.Data.Items
-                    .Adapt<List<BookingRoomSlotViewModel>>();
+                .Adapt<List<BookingRoomSlotViewModel>>();
             }
         }
         catch (Exception ex)
@@ -196,6 +205,11 @@
             if (result.IsSuccess)
             {
                 await LoadBooking();
+                // Use the injected hubConnection directly
+                if (HubConnection.State == HubConnectionState.Connected)
+                {
+                    await HubConnection.SendAsync("SendBookingStatusUpdate");
+                }
             }
         }
         finally
@@ -218,6 +232,11 @@
             if (result.IsSuccess)
             {
                 await LoadBooking();
+                // Use the injected hubConnection directly
+                if (HubConnection.State == HubConnectionState.Connected)
+                {
+                    await HubConnection.SendAsync("SendBookingStatusUpdate");
+                }
             }
         }
         finally

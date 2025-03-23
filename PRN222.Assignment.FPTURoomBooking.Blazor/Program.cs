@@ -1,5 +1,8 @@
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.SignalR.Client;
 using PRN222.Assignment.FPTURoomBooking.Blazor;
 using PRN222.Assignment.FPTURoomBooking.Blazor.Components;
+using PRN222.Assignment.FPTURoomBooking.Blazor.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +13,16 @@ builder.Services.AddRazorComponents()
 builder.ConfigureDatabase();
 builder.ConfigureServices();
 builder.ConfigureCookieAuthentication();
+// Map the Hub
+builder.Services.AddSingleton<HubConnection>(sp =>
+{
+    return new HubConnectionBuilder()
+        .WithUrl("https://localhost:5000/messageHub")
+        .WithAutomaticReconnect()
+        .Build();
+});
+// Add SignalR
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -26,7 +39,12 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 
+
+
+
+
+// ... other configurations ...
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
 app.Run();
