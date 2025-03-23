@@ -17,20 +17,20 @@
             </div>
             <div class="card-body">
                 <EditForm Model="@_loginModel" OnValidSubmit="@HandleValidSubmit" FormName="loginForm">
-                    <DataAnnotationsValidator />
-                    <ValidationSummary />
+                    <DataAnnotationsValidator/>
+                    <ValidationSummary/>
 
                     <div class="form-group mb-3">
                         <label for="email">Email</label>
-                        <InputText id="email" @bind-Value="@_loginModel.Email" class="form-control" />
-                        <ValidationMessage For="@(() => _loginModel.Email)" />
+                        <InputText id="email" @bind-Value="@_loginModel.Email" class="form-control"/>
+                        <ValidationMessage For="@(() => _loginModel.Email)"/>
                     </div>
 
                     <div class="form-group mb-3">
                         <label for="password">Password</label>
                         <InputText id="password" type="password" @bind-Value="@_loginModel.Password"
-                            class="form-control" />
-                        <ValidationMessage For="@(() => _loginModel.Password)" />
+                                   class="form-control"/>
+                        <ValidationMessage For="@(() => _loginModel.Password)"/>
                     </div>
 
                     @if (!string.IsNullOrEmpty(_errorMessage))
@@ -75,14 +75,16 @@
                     _errorMessage = "Access denied. Only managers can log in to this system.";
                     return;
                 }
-                
+
                 // Use NavigationManager to redirect with a full page reload before authentication
                 NavigationManager.NavigateTo("/Account/LoginProcessor?" +
-                $"username={Uri.EscapeDataString(account.Username)}&" +
-                $"fullname={Uri.EscapeDataString(account.FullName)}&" +
-                $"email={Uri.EscapeDataString(account.Email)}&" +
-                $"role={Uri.EscapeDataString(account.Role.ToString())}",
-                forceLoad: true);
+                                             $"id={Uri.EscapeDataString(account!.Id.ToString())}&" +
+                                             $"username={Uri.EscapeDataString(account.Username)}&" +
+                                             $"fullname={Uri.EscapeDataString(account.FullName)}&" +
+                                             $"email={Uri.EscapeDataString(account.Email)}&" +
+                                             $"role={Uri.EscapeDataString(account.Role.ToString())}",
+                    forceLoad:
+                    true);
             }
             else
             {

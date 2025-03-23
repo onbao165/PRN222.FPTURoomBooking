@@ -13,5 +13,5 @@ public interface IBookingService
     Task<Result<BookingModel>> GetAsync(Guid id);
     Task<Result<PaginationResult<BookingModel>>> GetPagedAsync(GetBookingModel model);
     Task<Result<BookingModel>> CreateBookingWithRoomSlots(BookingModel booking, IEnumerable<RoomSlotModel> roomSlots);
-    Task<Result> UpdateStatusAsync(Guid id, BookingStatus status);
+    Task<Result> UpdateStatusAsync(Guid id,Guid managerId, BookingStatus status);
 }

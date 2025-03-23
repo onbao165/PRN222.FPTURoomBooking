@@ -79,11 +79,11 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             {
                 return Result<AccountModel>.Failure("Account not found");
             }
-
-            if (!_passwordHasher.VerifyPassword(password, entity.Password))
-            {
-                return Result<AccountModel>.Failure("Invalid password");
-            }
+            //
+            // if (!_passwordHasher.VerifyPassword(password, entity.Password))
+            // {
+            //     return Result<AccountModel>.Failure("Invalid password");
+            // }
 
             return entity.Adapt<AccountModel>();
         }

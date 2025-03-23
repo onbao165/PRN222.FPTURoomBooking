@@ -13,7 +13,8 @@ public class MappingConfig
     public static void RegisterMappings()
     {
         TypeAdapterConfig<Account, AccountModel>.NewConfig()
-            .Ignore(dest => dest.Password); // Ignore password when mapping from Account to AccountModel
+            .Ignore(dest => dest.Password);
+            
         TypeAdapterConfig<AccountModel, Account>.NewConfig()
             .Ignore(dest => dest.Department)
             .Ignore(dest => dest.CreatedAt)
@@ -38,5 +39,6 @@ public class MappingConfig
             .Ignore(dest => dest.Room)
             .Ignore(dest => dest.CreatedAt)
             .Ignore(dest => dest.UpdatedAt);
+        
     }
 }
