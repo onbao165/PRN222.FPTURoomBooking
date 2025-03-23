@@ -1,12 +1,16 @@
 @page "/User"
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
+@using PRN222.Assignment.FPTURoomBooking.Repositories.Models
 @using PRN222.Assignment.FPTURoomBooking.Services.Models.Account
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 @attribute [Authorize(Roles = "Admin")]
 @inject IAccountService AccountService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JsRuntime
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>User Management</PageTitle>
 
@@ -54,32 +58,44 @@
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
                         <thead class="table-dark">
-                            <tr>
-                                <th>Email</th>
-                                <th>Full Name</th>
-                                <th>Role</th>
-                                <th>Created At</th>
-                                <th>Actions</th>
-                            </tr>
+                        <tr>
+                            <th>Email</th>
+                            <th>Username</th>
+                            <th>Full Name</th>
+                            <th>Role</th>
+                            <th>Department</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
                         </thead>
                         <tbody>
-                            @foreach (var user in _users.Items)
-                            {
-                                <tr>
-                                    <td>@user.Email</td>
-                                    <td>@user.FullName</td>
-                                    <td>@user.Role</td>
-                                    <td>@user.CreatedAt.ToString("yyyy-MM-dd")</td>
-                                    <td>
-                                        <button class="btn btn-sm btn-info me-2" @onclick="() => ViewDetails(user.Id)">
-                                            Details
-                                        </button>
+                        @foreach (var user in _users.Items)
+                        {
+                            <tr>
+                                <td>@user.Email</td>
+                                <td>@user.Username</td>
+                                <td>@user.FullName</td>
+                                <td>@user.Role</td>
+                                <td>
+                                    @if (user.Role == AccountRole.Manager)
+                                    {
+                                        @(user.Department?.Name ?? "No Department")
+                                    }
+                                </td>
+                                <td>@user.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info me-2" @onclick="() => ViewDetails(user.Id)">
+                                        Details
+                                    </button>
+                                    @if (user.Id.ToString() != _currentUserId)
+                                    {
                                         <button class="btn btn-sm btn-danger" @onclick="() => DeleteUser(user.Id)">
                                             Delete
                                         </button>
-                                    </td>
-                                </tr>
-                            }
+                                    }
+                                </td>
+                            </tr>
+                        }
                         </tbody>
                     </table>
                 </div>
@@ -128,17 +144,14 @@
     private bool _isDescending;
     private int _pageNumber = 1;
     private const int _pageSize = 10;
-
-    protected override void OnInitialized()
-    {
-        _pageNumber = 1;
-        _searchTerm = "";
-        _orderBy = "email";
-        _isDescending = false;
-    }
+    private string? _currentUserId;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        _currentUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
         await LoadUsers(_pageNumber);
     }
 
@@ -237,6 +250,12 @@
 
     private async Task DeleteUser(Guid id)
     {
+        if (id.ToString() == _currentUserId)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", "You cannot delete your own account!");
+            return;
+        }
+
         if (!await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this user?"))
             return;
 
@@ -245,5 +264,10 @@
         {
             await LoadUsers(_pageNumber);
         }
+        else
+        {
+            await JsRuntime.InvokeVoidAsync("alert", result.Error ?? "Failed to delete user");
+        }
     }
+
 }
