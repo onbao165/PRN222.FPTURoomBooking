@@ -6,11 +6,74 @@
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.WebUtilities
 @attribute [Authorize(Roles = "Admin")]
 @inject IAccountService AccountService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JsRuntime
 @inject AuthenticationStateProvider AuthenticationStateProvider
+
+<style>
+    .table-responsive {
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #2d3748;
+        color: white;
+        font-weight: 500;
+        border: none;
+    }
+
+    .table-striped tbody tr:nth-of-type(odd) {
+        background-color: rgba(0,0,0,.02);
+    }
+
+    .btn-outline-secondary {
+        border-color: #e2e8f0;
+    }
+
+    .btn-outline-secondary:hover {
+        background-color: #4a5568;
+        border-color: #4a5568;
+        color: white;
+    }
+
+    .form-control, .form-select {
+        border-color: #e2e8f0;
+        border-radius: 6px;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #4299e1;
+        box-shadow: 0 0 0 2px rgba(66,153,225,0.2);
+    }
+
+    .pagination {
+        margin-top: 1.5rem;
+        margin-bottom: 0;
+    }
+
+    .page-link {
+        color: #4a5568;
+        border-color: #e2e8f0;
+    }
+
+    .page-item.active .page-link {
+        background-color: #4a5568;
+        border-color: #4a5568;
+    }
+
+    .form-check-input:checked {
+        background-color: #4a5568;
+        border-color: #4a5568;
+    }
+</style>
 
 <PageTitle>User Management</PageTitle>
 
@@ -25,14 +88,19 @@
                 <div class="col-md-6">
                     <div class="input-group">
                         <input type="text" class="form-control" @bind="_searchTerm" @bind:event="oninput"
-                               placeholder="Search users...">
-                        <button class="btn btn-outline-secondary" @onclick="Search">Search</button>
+                               placeholder="Search by email, username, or full name...">
+                        <button class="btn btn-outline-secondary" @onclick="Search">
+                            <i class="bi bi-search"></i> Search
+                        </button>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <select class="form-select" @bind="_orderBy" @bind:event="onchange"
                             @bind:after="HandleOrderByChange">
                         <option value="email">Email</option>
+                        <option value="username">Username</option>
+                        <option value="fullName">Full Name</option>
+                        <option value="role">Role</option>
                         <option value="createdAt">Created Date</option>
                     </select>
                 </div>
@@ -47,90 +115,90 @@
 
             @if (_loading)
             {
-                <div class="text-center">
-                    <div class="spinner-border" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                </div>
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
             }
             else if (_users?.Items.Any() == true)
             {
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover">
-                        <thead class="table-dark">
-                        <tr>
-                            <th>Email</th>
-                            <th>Username</th>
-                            <th>Full Name</th>
-                            <th>Role</th>
-                            <th>Department</th>
-                            <th>Created At</th>
-                            <th>Actions</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        @foreach (var user in _users.Items)
-                        {
-                            <tr>
-                                <td>@user.Email</td>
-                                <td>@user.Username</td>
-                                <td>@user.FullName</td>
-                                <td>@user.Role</td>
-                                <td>
-                                    @if (user.Role == AccountRole.Manager)
-                                    {
-                                        @(user.Department?.Name ?? "No Department")
-                                    }
-                                </td>
-                                <td>@user.CreatedAt.ToString("yyyy-MM-dd")</td>
-                                <td>
-                                    <button class="btn btn-sm btn-info me-2" @onclick="() => ViewDetails(user.Id)">
-                                        Details
-                                    </button>
-                                    @if (user.Id.ToString() != _currentUserId)
-                                    {
-                                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteUser(user.Id)">
-                                            Delete
-                                        </button>
-                                    }
-                                </td>
-                            </tr>
-                        }
-                        </tbody>
-                    </table>
-                </div>
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Username</th>
+                                    <th>Full Name</th>
+                                    <th>Role</th>
+                                    <th>Department</th>
+                                    <th>Created At</th>
+                                    <th>Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var user in _users.Items)
+                                {
+                                            <tr>
+                                                <td>@user.Email</td>
+                                                <td>@user.Username</td>
+                                                <td>@user.FullName</td>
+                                                <td>@user.Role</td>
+                                                <td>
+                                                    @if (user.Role == AccountRole.Manager)
+                                                    {
+                                                                @(user.Department?.Name ?? "No Department")
+                                                    }
+                                                </td>
+                                                <td>@user.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-info me-2" @onclick="() => ViewDetails(user.Id)">
+                                                        Details
+                                                    </button>
+                                                    @if (user.Id.ToString() != _currentUserId)
+                                                    {
+                                                                <button class="btn btn-sm btn-danger" @onclick="() => DeleteUser(user.Id)">
+                                                                    Delete
+                                                                </button>
+                                                    }
+                                                </td>
+                                            </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
 
-                <nav>
-                    <ul class="pagination">
-                        @if (_users?.HasPreviousPage == true)
-                        {
-                            <li class="page-item">
-                                <button class="page-link" @onclick="() => LoadUsers(_pageNumber - 1)">Previous</button>
-                            </li>
-                        }
+                        <nav>
+                            <ul class="pagination">
+                                @if (_users?.HasPreviousPage == true)
+                                {
+                                            <li class="page-item">
+                                                <button class="page-link" @onclick="() => LoadUsers(_pageNumber - 1)">Previous</button>
+                                            </li>
+                                }
 
-                        @for (var i = 1; i <= _users?.TotalPages; i++)
-                        {
-                            var pageNumber = i;
-                            <li class="page-item @(pageNumber == _pageNumber ? "active" : "")">
-                                <button class="page-link" @onclick="() => LoadUsers(pageNumber)">@pageNumber</button>
-                            </li>
-                        }
+                                @for (var i = 1; i <= _users?.TotalPages; i++)
+                                {
+                                            var pageNumber = i;
+                                            <li class="page-item @(pageNumber == _pageNumber ? "active" : "")">
+                                                <button class="page-link" @onclick="() => LoadUsers(pageNumber)">@pageNumber</button>
+                                            </li>
+                                }
 
-                        @if (_users?.HasNextPage == true)
-                        {
-                            <li class="page-item">
-                                <button class="page-link" @onclick="() => LoadUsers(_pageNumber + 1)">Next</button>
-                            </li>
-                        }
-                    </ul>
-                </nav>
+                                @if (_users?.HasNextPage == true)
+                                {
+                                            <li class="page-item">
+                                                <button class="page-link" @onclick="() => LoadUsers(_pageNumber + 1)">Next</button>
+                                            </li>
+                                }
+                            </ul>
+                        </nav>
             }
             else
             {
-                <div class="alert alert-info">
-                    No users found.
-                </div>
+                        <div class="alert alert-info">
+                            No users found.
+                        </div>
             }
         </div>
     </div>
@@ -153,6 +221,31 @@
         _currentUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         await LoadUsers(_pageNumber);
+    }
+
+    protected override void OnInitialized()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("searchTerm", out var searchTerm))
+        {
+            _searchTerm = searchTerm;
+        }
+        
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("orderBy", out var orderBy))
+        {
+            _orderBy = orderBy;
+        }
+        
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("isDescending", out var isDescending))
+        {
+            bool.TryParse(isDescending, out _isDescending);
+        }
+        
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("pageNumber", out var pageNumber))
+        {
+            int.TryParse(pageNumber, out _pageNumber);
+        }
     }
 
     private void UpdateUrl()

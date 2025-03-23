@@ -85,7 +85,9 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
 
             if (!string.IsNullOrEmpty(model.SearchTerm))
             {
-                filter = filter.CombineAndAlsoExpressions(x => true);
+                filter = filter.CombineAndAlsoExpressions(x => x.Email.Contains(model.SearchTerm) ||
+                                                               x.Username.Contains(model.SearchTerm) ||
+                                                               x.FullName.Contains(model.SearchTerm));
             }
 
             if (!model.DepartmentId.IsNullOrGuidEmpty())
@@ -147,6 +149,7 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
                     {
                         return Result.Failure("Department not found");
                     }
+
                     break;
             }
 
