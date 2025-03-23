@@ -73,18 +73,20 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
         }
 
         public async Task<Result<AccountModel>> LoginAsync(string email, string password)
+        {
+            var entity = await _unitOfWork.AccountRepository.GetQueryable().FirstOrDefaultAsync(x => x.Email == email && x.Password == password);
+            if (entity == null)
             {
-                var entity = await _unitOfWork.AccountRepository.GetQueryable().FirstOrDefaultAsync(x => x.Email == email);
-                if (entity == null)
-                {
-                    return Result<AccountModel>.Failure("Account not found");
-                }
-                if (!_passwordHasher.VerifyPassword(password, entity.Password))
-                {
-                    return Result<AccountModel>.Failure("Invalid password");
-                }
-                return entity.Adapt<AccountModel>();
+                return Result<AccountModel>.Failure("Account not found");
             }
+
+            if (!_passwordHasher.VerifyPassword(password, entity.Password))
+            {
+                return Result<AccountModel>.Failure("Invalid password");
+            }
+
+            return entity.Adapt<AccountModel>();
+        }
 
         public async Task<Result> UpdateAsync(AccountModel model)
         {
@@ -98,6 +100,21 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             _unitOfWork.AccountRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
             return Result.Success();
+        }
+
+        public async Task<Result<AccountModel>> GetByEmailAsync(string email)
+        {
+            var entity = await _unitOfWork.AccountRepository.GetQueryable()
+                .Include(x => x.Department)
+                .ThenInclude(d => d.Campus)
+                .FirstOrDefaultAsync(x => x.Email == email);
+
+            if (entity == null)
+            {
+                return Result<AccountModel>.Failure("Account not found");
+            }
+
+            return entity.Adapt<AccountModel>();
         }
     }
 }
