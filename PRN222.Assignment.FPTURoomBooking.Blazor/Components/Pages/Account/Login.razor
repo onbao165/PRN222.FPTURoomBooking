@@ -75,17 +75,7 @@
                     _errorMessage = "Access denied. Only managers can log in to this system.";
                     return;
                 }
-
-                // Create authentication claims
-                var claims = new List<Claim>
-{
-new Claim(ClaimTypes.NameIdentifier, account!.Username),
-new Claim(ClaimTypes.Name, account.FullName),
-new Claim(ClaimTypes.Email, account.Email),
-new Claim(ClaimTypes.Role, account.Role.ToString()),
-};
-
-
+                
                 // Use NavigationManager to redirect with a full page reload before authentication
                 NavigationManager.NavigateTo("/Account/LoginProcessor?" +
                 $"username={Uri.EscapeDataString(account.Username)}&" +
