@@ -3,6 +3,8 @@ using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.SignalR;
+using PRN222.Assignment.FPTURoomBooking.Mvc.Hubs;
 using PRN222.Assignment.FPTURoomBooking.Mvc.Models;
 using PRN222.Assignment.FPTURoomBooking.Repositories.Models;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Booking;
@@ -15,7 +17,7 @@ using PRN222.Assignment.FPTURoomBooking.Services.Utils;
 
 namespace PRN222.Assignment.FPTURoomBooking.Mvc.Controllers;
 
-[Authorize]
+[Authorize(Roles = "User")]
 public class BookingController : Controller
 {
     private readonly IBookingService _bookingService;
@@ -24,6 +26,7 @@ public class BookingController : Controller
     private readonly IRoomService _roomService;
     private readonly IDepartmentService _departmentService;
     private readonly ICampusService _campusService;
+    private readonly IHubContext<MessageHub, IMessageHubClient> _hubContext;
 
     public BookingController(
         IBookingService bookingService,
@@ -31,7 +34,7 @@ public class BookingController : Controller
         IAccountService accountService,
         IRoomService roomService,
         IDepartmentService departmentService,
-        ICampusService campusService)
+        ICampusService campusService, IHubContext<MessageHub, IMessageHubClient> hubContext)
     {
         _bookingService = bookingService;
         _roomSlotService = roomSlotService;
@@ -39,6 +42,7 @@ public class BookingController : Controller
         _roomService = roomService;
         _departmentService = departmentService;
         _campusService = campusService;
+        _hubContext = hubContext;
     }
 
     [HttpGet]
@@ -301,6 +305,11 @@ public class BookingController : Controller
         ModelState.AddModelError(string.Empty, result.Error ?? "Failed to create booking");
         await PopulateAvailableRoomSlots(model);
         await PopulateDropdowns(model.CampusId, model.DepartmentId);
+        // Notify the managers that a new booking has been created
+        var roomId = roomSlots.FirstOrDefault()?.RoomId;
+        var room = await _roomService.GetAsync(roomId!.Value);
+        var departmentId = room.Data!.Department.Id;
+        await _hubContext.Clients.Group(departmentId.ToString()).ReceiveNewBooking();
         return View(model);
     }
 
@@ -430,7 +439,7 @@ public class BookingController : Controller
         if (existingBookings is { IsSuccess: true, Data: not null })
         {
             var bookedSlots = new HashSet<(Guid RoomId, TimeSlot TimeSlot)>();
-            
+
             foreach (var booking in existingBookings.Data.Items.Where(b => b.Id != model.Id))
             {
                 var slots = await _roomSlotService.GetPagedAsync(new GetRoomSlotModel
@@ -450,7 +459,7 @@ public class BookingController : Controller
             // Check if any of current room slots conflict with existing bookings
             if (currentRoomSlots.Data.Items.Any(slot => bookedSlots.Contains((slot.RoomId, slot.TimeSlot))))
             {
-                ModelState.AddModelError(string.Empty, 
+                ModelState.AddModelError(string.Empty,
                     "One or more selected room slots are not available for the new date");
                 await RePopulateRoomSlots(model);
                 return View(model);
@@ -512,20 +521,25 @@ public class BookingController : Controller
         }
 
         // Delete room slots associated with this booking
-        var roomSlos = await _roomSlotService.GetPagedAsync(new GetRoomSlotModel
+        var roomSlots = await _roomSlotService.GetPagedAsync(new GetRoomSlotModel
         {
             BookingId = id,
             PageSize = 100
         });
-        if (roomSlos is { IsSuccess: true, Data: not null })
+        if (roomSlots is { IsSuccess: true, Data: not null })
         {
-            foreach (var slot in roomSlos.Data.Items)
+            foreach (var slot in roomSlots.Data.Items)
             {
                 await _roomSlotService.DeleteAsync(slot.Id);
             }
         }
 
         TempData["SuccessMessage"] = "Booking cancelled successfully";
+        // Send notification to managers
+        var roomId = roomSlots.Data?.Items.FirstOrDefault()?.RoomId;
+        var room = await _roomService.GetAsync(roomId!.Value);
+        var departmentId = room.Data!.Department.Id;
+        await _hubContext.Clients.Group(departmentId.ToString()).ReceiveBookingStatusUpdate();
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -780,6 +794,7 @@ public class BookingController : Controller
                 model.RoomSlots.Add(roomSlotViewModel);
             }
         }
+
         model.IsManager = false;
     }
 }
