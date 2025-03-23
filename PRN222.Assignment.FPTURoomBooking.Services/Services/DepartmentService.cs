@@ -28,11 +28,25 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
 
         public async Task<Result> DeleteAsync(Guid id)
         {
-            var entity = await _unitOfWork.DepartmentRepository.GetByIdAsync(id);
+            var entity = await _unitOfWork.DepartmentRepository.GetQueryable()
+                .Include(x => x.Rooms)
+                .Include(x => x.Accounts)
+                .FirstOrDefaultAsync(x => x.Id == id);
             if (entity == null)
             {
                 return Result.Failure("Department not found");
             }
+
+            if (entity.Rooms.Any())
+            {
+                return Result.Failure("Cannot delete department with associated rooms");
+            }
+
+            if (entity.Accounts.Any())
+            {
+                return Result.Failure("Cannot delete department with associated accounts");
+            }
+
             _unitOfWork.DepartmentRepository.Remove(entity);
             await _unitOfWork.SaveChangesAsync();
             return Result.Success();
@@ -56,7 +70,7 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             {
                 filter = filter.CombineAndAlsoExpressions(x => true);
             }
-            
+
             if (!model.CampusId.IsNullOrGuidEmpty())
             {
                 filter = filter.CombineAndAlsoExpressions(x => x.CampusId == model.CampusId);
