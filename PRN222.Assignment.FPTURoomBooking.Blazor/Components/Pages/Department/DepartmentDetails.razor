@@ -206,7 +206,7 @@
 @code {
     [Parameter] public Guid? Id { get; set; }
 
-    private List<CampusModel> _campuses = new();
+    private List<CampusModel> _campuses = [];
     private string? _errorMessage;
 
     private InitDepartmentModel _initDepartment = new()
@@ -275,7 +275,7 @@
             var result = await CampusService.GetPagedAsync(new GetCampusModel { PageSize = 100 });
             if (result.IsSuccess)
             {
-                _campuses = result.Data?.Items.ToList() ?? new();
+                _campuses = result.Data?.Items.ToList() ?? [];
             }
             else
             {

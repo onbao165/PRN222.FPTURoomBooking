@@ -1,13 +1,15 @@
 ﻿@page "/Room/Edit/{Id:guid}"
-@rendermode InteractiveServer
+@using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using PRN222.Assignment.FPTURoomBooking.Services.Models.Room
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
-@using System.Security.Claims
-@attribute [Authorize(Roles = "Manager")]
+@using Microsoft.AspNetCore.SignalR.Client
+@rendermode InteractiveServer
+@attribute [Authorize]
 @inject IRoomService RoomService
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager NavigationManager
+@inject HubConnection HubConnection
 
 <PageTitle>Edit Room</PageTitle>
 
@@ -28,77 +30,101 @@
                     </div>
                 </div>
             }
+            else if (_errorMessage != null)
+            {
+                <div class="alert alert-danger">
+                    @_errorMessage
+                </div>
+            }
             else if (_roomModel != null)
             {
                 <EditForm Model="@_roomModel" OnValidSubmit="@HandleValidSubmit">
-                    <DataAnnotationsValidator />
-                    <ValidationSummary />
+                    <DataAnnotationsValidator/>
+                    <ValidationSummary/>
 
                     <div class="mb-3">
                         <label for="name" class="form-label">Room Name</label>
-                        <InputText id="name" @bind-Value="_roomModel.Name" class="form-control" />
-                        <ValidationMessage For="@(() => _roomModel.Name)" />
+                        <InputText id="name" @bind-Value="_roomModel.Name" class="form-control"/>
+                        <ValidationMessage For="@(() => _roomModel.Name)"/>
                     </div>
 
                     <div class="mb-3">
                         <label for="description" class="form-label">Description</label>
-                        <InputTextArea id="description" @bind-Value="_roomModel.Description" class="form-control" rows="3" />
-                        <ValidationMessage For="@(() => _roomModel.Description)" />
+                        <InputTextArea id="description" @bind-Value="_roomModel.Description" class="form-control"
+                                       rows="3"/>
+                        <ValidationMessage For="@(() => _roomModel.Description)"/>
                     </div>
 
-                    @if (_errorMessage != null)
-                    {
-                        <div class="alert alert-danger">
-                            @_errorMessage
-                        </div>
-                    }
-
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fa fa-save"></i> Save Changes
+                        <button type="submit" class="btn btn-primary" disabled="@_loading">
+                            @if (_loading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1" role="status"
+                                      aria-hidden="true"></span>
+                            }
+                            <i class="fa fa-save"></i> Update Room
                         </button>
                     </div>
                 </EditForm>
-            }
-            else
-            {
-                <div class="alert alert-danger">
-                    Room not found or you don't have permission to edit it.
-                </div>
             }
         </div>
     </div>
 </div>
 
 @code {
-    [Parameter]
-    public Guid Id { get; set; }
+    [Parameter] public Guid Id { get; set; }
 
     private RoomModel? _roomModel;
     private string? _errorMessage;
-    private bool _loading = true;
     private Guid _departmentId;
+    private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
     {
         var user = HttpContextAccessor.HttpContext?.User;
         if (user?.Identity?.IsAuthenticated == true)
         {
-            var departmentIdClaim = user.FindFirst("DepartmentId")?.Value;
-            if (Guid.TryParse(departmentIdClaim, out var deptId))
+            var departmentId = user.FindFirstValue("DepartmentId");
+            if (!string.IsNullOrEmpty(departmentId) && Guid.TryParse(departmentId, out var departmentGuid))
             {
-                _departmentId = deptId;
-                await LoadRoom();
-            }
-            else
-            {
-                NavigationManager.NavigateTo("/Account/Login");
+                _departmentId = departmentGuid;
             }
         }
-        else
+
+        await LoadRoom();
+        
+        if (HubConnection.State == HubConnectionState.Disconnected)
         {
-            NavigationManager.NavigateTo("/Account/Login");
+            try
+            {
+                await HubConnection.StartAsync();
+                Console.WriteLine("Connected to SignalR hub");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error connecting to SignalR: {ex.Message}");
+            }
         }
+
+        if (HubConnection.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                HubConnection.On("ReceiveRoomUpdate", async () =>
+                {
+                    await InvokeAsync(async () =>
+                    {
+                        await LoadRoom();
+                        StateHasChanged();
+                    });
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error setting up SignalR: {ex.Message}");
+            }
+        }
+        await base.OnInitializedAsync();
     }
 
     private async Task LoadRoom()
@@ -106,12 +132,14 @@
         try
         {
             _loading = true;
+            _errorMessage = null;
             var result = await RoomService.GetAsync(Id);
 
-            if (result.IsSuccess)
+            if (result is { IsSuccess: true, Data: not null })
             {
                 _roomModel = result.Data;
-                if (_roomModel.DepartmentId != _departmentId)
+                // Check if the room belongs to the manager's department
+                if (_departmentId != Guid.Empty && _roomModel.DepartmentId != _departmentId)
                 {
                     _roomModel = null;
                     _errorMessage = "You don't have permission to edit this room.";
@@ -132,8 +160,10 @@
     {
         try
         {
+            _loading = true;
             _errorMessage = null;
-            if (_roomModel.DepartmentId != _departmentId)
+
+            if (_roomModel!.DepartmentId != _departmentId)
             {
                 _errorMessage = "You cannot change the department of this room.";
                 return;
@@ -142,6 +172,11 @@
             var result = await RoomService.UpdateAsync(_roomModel);
             if (result.IsSuccess)
             {
+                if (HubConnection.State == HubConnectionState.Connected)
+                {
+                    await HubConnection.SendAsync("SendRoomUpdate");
+                }
+
                 NavigationManager.NavigateTo("/Room");
             }
             else
@@ -153,5 +188,10 @@
         {
             _errorMessage = $"An error occurred: {ex.Message}";
         }
+        finally
+        {
+            _loading = false;
+        }
     }
+
 }

@@ -28,7 +28,7 @@ public class BookingViewModel
 
     public DateTime? UpdatedAt { get; set; }
 
-    public List<RoomSlotViewModel> RoomSlots { get; set; } = new();
+    public List<RoomSlotViewModel> RoomSlots { get; set; } = [];
 }
 
 public class BookingListViewModel
@@ -70,10 +70,10 @@ public class CreateBookingViewModel
 
     // Selected room slots
     [Required(ErrorMessage = "Please select at least one room slot")]
-    public List<RoomSlotSelectionViewModel> SelectedRoomSlots { get; set; } = new();
+    public List<RoomSlotSelectionViewModel> SelectedRoomSlots { get; set; } = [];
     
     // Available room slots for selection
-    public List<RoomSlotViewModel> AvailableRoomSlots { get; set; } = new();
+    public List<RoomSlotViewModel> AvailableRoomSlots { get; set; } = [];
 }
 
 public class RoomSlotSelectionViewModel
@@ -93,7 +93,7 @@ public class EditBookingViewModel
 
     [Display(Name = "Status")] public BookingStatus Status { get; set; }
 
-    [Display(Name = "Room Slots")] public List<RoomSlotViewModel> RoomSlots { get; set; } = new();
+    [Display(Name = "Room Slots")] public List<RoomSlotViewModel> RoomSlots { get; set; } = [];
 
     public Guid AccountId { get; set; }
 

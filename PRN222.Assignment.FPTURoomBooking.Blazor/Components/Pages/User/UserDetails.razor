@@ -271,7 +271,7 @@
     [Parameter] public Guid? Id { get; set; }
 
     private AccountModel _user = new();
-    private List<Department> _departments = new();
+    private List<Department> _departments = [];
 
     private InitAccountModel _initUser = new()
     {

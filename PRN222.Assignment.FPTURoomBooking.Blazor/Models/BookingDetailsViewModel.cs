@@ -13,7 +13,7 @@ public class BookingDetailsViewModel
 
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
-    public List<BookingRoomSlotViewModel> RoomSlots { get; set; } = new();
+    public List<BookingRoomSlotViewModel> RoomSlots { get; set; } = [];
 }
 
 public class BookingRoomSlotViewModel

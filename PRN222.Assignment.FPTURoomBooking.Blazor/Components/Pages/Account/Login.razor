@@ -5,6 +5,7 @@
 @rendermode InteractiveServer
 @inject IAccountService AccountService
 @inject NavigationManager NavigationManager
+@inject IHttpContextAccessor HttpContextAccessor
 
 <PageTitle>Login</PageTitle>
 
@@ -52,6 +53,15 @@
 
     private readonly LoginModel _loginModel = new();
     private string _errorMessage = string.Empty;
+    
+    protected override void OnInitialized()
+    {
+        var user = HttpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            NavigationManager.NavigateTo("/Home");
+        }
+    }
 
     private void ClearValidationMessages()
     {
