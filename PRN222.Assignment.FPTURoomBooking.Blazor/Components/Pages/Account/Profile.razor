@@ -1,9 +1,9 @@
 @page "/Account/Profile"
-@rendermode InteractiveServer
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using PRN222.Assignment.FPTURoomBooking.Services.Models.Account
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@rendermode InteractiveServer
 @inject IAccountService AccountService
 @inject IHttpContextAccessor HttpContextAccessor
 @attribute [Authorize]
@@ -88,4 +88,5 @@
             _loading = false;
         }
     }
+
 }

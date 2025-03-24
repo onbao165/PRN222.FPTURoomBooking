@@ -9,7 +9,8 @@
             {
                 var pageNumber = i;
                 <li class="page-item @(pageNumber == CurrentPage ? "active" : "")">
-                    <button class="page-link" @onclick="() => OnPageChanged.InvokeAsync(pageNumber)">@pageNumber</button>
+                    <button class="page-link"
+                            @onclick="() => OnPageChanged.InvokeAsync(pageNumber)">@pageNumber</button>
                 </li>
             }
             <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
@@ -20,12 +21,9 @@
 }
 
 @code {
-    [Parameter]
-    public int CurrentPage { get; set; }
+    [Parameter] public int CurrentPage { get; set; }
 
-    [Parameter]
-    public int TotalPages { get; set; }
+    [Parameter] public int TotalPages { get; set; }
 
-    [Parameter]
-    public EventCallback<int> OnPageChanged { get; set; }
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
 }

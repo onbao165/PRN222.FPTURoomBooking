@@ -1,15 +1,17 @@
 @page "/Department/Create"
 @page "/Department/{Id:guid}"
-@rendermode InteractiveServer
-@using Microsoft.AspNetCore.Authorization
-@using PRN222.Assignment.FPTURoomBooking.Services.Models.Department
-@using PRN222.Assignment.FPTURoomBooking.Services.Models.Campus
-@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
 @using Mapster
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Campus
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Department
+@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@rendermode InteractiveServer
 @attribute [Authorize(Roles = "Admin")]
 @inject IDepartmentService DepartmentService
 @inject ICampusService CampusService
 @inject NavigationManager NavigationManager
+@inject HubConnection HubConnection
 
 <style>
     .department-details-card {
@@ -106,12 +108,12 @@
     }
 </style>
 
-<PageTitle>@(_isNew ? "Create Department" : "Department Details")</PageTitle>
+<PageTitle>@(IsNew ? "Create Department" : "Department Details")</PageTitle>
 
 <div class="container mt-4">
     <div class="card department-details-card">
         <div class="card-header department-details-header d-flex justify-content-between align-items-center">
-            <h3 class="department-details-title">@(_isNew ? "Create Department" : "Department Details")</h3>
+            <h3 class="department-details-title">@(IsNew ? "Create Department" : "Department Details")</h3>
             <button class="btn btn-secondary back-button" @onclick="GoBack">Back to List</button>
         </div>
         <div class="card-body p-4">
@@ -137,7 +139,7 @@
                     </div>
                 }
 
-                @if (_isNew)
+                @if (IsNew)
                 {
                     <EditForm Model="@_initDepartment" OnValidSubmit="HandleSubmit">
                         <DataAnnotationsValidator/>
@@ -215,18 +217,54 @@
     };
 
     private bool _loading = true;
-    private bool _isNew => Id == null;
+    private bool IsNew => Id == null;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadCampuses();
-        if (!_isNew)
+        if (!IsNew)
         {
             await LoadDepartment();
         }
         else
         {
             _loading = false;
+        }
+
+        if (HubConnection.State == HubConnectionState.Disconnected)
+        {
+            try
+            {
+                await HubConnection.StartAsync();
+                Console.WriteLine("Connected to SignalR hub");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error connecting to SignalR: {ex.Message}");
+            }
+        }
+
+        if (HubConnection.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                HubConnection.On("ReceiveDepartmentUpdate", async () =>
+                {
+                    Console.WriteLine("Received department update");
+                    if (NavigationManager.Uri.Contains("/Campus"))
+                    {
+                        await InvokeAsync(async () =>
+                        {
+                            await LoadDepartment();
+                            StateHasChanged();
+                        });
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error receiving department update: {ex.Message}");
+            }
         }
     }
 
@@ -289,6 +327,7 @@
         if (result.IsSuccess)
         {
             NavigationManager.NavigateTo("/Department");
+            await HubConnection.SendAsync("SendDepartmentUpdate");
         }
         else
         {

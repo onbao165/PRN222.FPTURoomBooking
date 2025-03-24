@@ -1,9 +1,9 @@
-﻿@inherits LayoutComponentBase
-@using System.Security.Claims
+﻿@using System.Security.Claims
 @using Microsoft.AspNetCore.SignalR.Client
-@inject NavigationManager NavigationManager
-@inject IHttpContextAccessor HttpContextAccessor
+@inherits LayoutComponentBase
+@implements IAsyncDisposable
 @inject HubConnection HubConnection
+@inject IHttpContextAccessor HttpContextAccessor
 
 <div class="page">
     <div class="sidebar">
@@ -11,18 +11,7 @@
     </div>
 
     <main>
-        <div class="top-row px-4">
-            @if (_isAuthenticated)
-            {
-                <span class="me-3">Welcome, @_fullName!</span>
-                <a href="/Account/Profile" class="me-3">Profile</a>
-                <button class="btn btn-link" @onclick="HandleLogout">Logout</button>
-            }
-            else
-            {
-                <a href="/Account/Login">Login</a>
-            }
-        </div>
+        <MainHeader />
 
         <article class="content px-4">
             @Body
@@ -37,18 +26,14 @@
 </div>
 
 @code {
-    private bool _isAuthenticated;
-    private string _fullName = string.Empty;
     private Guid _currentUserDepartmentId;
 
     protected override async Task OnInitializedAsync()
     {
         var user = HttpContextAccessor.HttpContext?.User;
-        _isAuthenticated = user?.Identity?.IsAuthenticated == true;
-        if (_isAuthenticated)
+        if (user?.Identity?.IsAuthenticated == true)
         {
-            _fullName = user!.FindFirstValue(ClaimTypes.Name) ?? "User";
-            var departmentId = user!.FindFirstValue("DepartmentId");
+            var departmentId = user.FindFirstValue("DepartmentId");
             if (!string.IsNullOrEmpty(departmentId) && Guid.TryParse(departmentId, out var departmentGuid))
             {
                 _currentUserDepartmentId = departmentGuid;
@@ -71,17 +56,11 @@
         await base.OnInitializedAsync();
     }
 
-    private void HandleLogout()
-    {
-        NavigationManager.NavigateTo("/Account/LogoutProcessor", true);
-    }
-
-    public async ValueTask DisposeAsync()
+    async ValueTask IAsyncDisposable.DisposeAsync()
     {
         if (HubConnection.State == HubConnectionState.Connected && _currentUserDepartmentId != Guid.Empty)
         {
             await HubConnection.SendAsync("LeaveDepartmentGroup", _currentUserDepartmentId);
         }
     }
-
 }

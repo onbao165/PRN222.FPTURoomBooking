@@ -1,13 +1,13 @@
 @page "/Booking"
-@rendermode InteractiveServer
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.SignalR.Client
+@using PRN222.Assignment.FPTURoomBooking.Blazor.Components.Shared
 @using PRN222.Assignment.FPTURoomBooking.Repositories.Models
 @using PRN222.Assignment.FPTURoomBooking.Services.Models.Booking
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
-@using PRN222.Assignment.FPTURoomBooking.Blazor.Components.Shared
 @using PRN222.Assignment.FPTURoomBooking.Services.Utils
+@rendermode InteractiveServer
 @inject NavigationManager NavigationManager
 @inject IBookingService BookingService
 @inject IAccountService AccountService
@@ -42,15 +42,15 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Start Date</label>
-                    <input type="date" class="form-control" @bind="_getModel.StartDate" />
+                    <input type="date" class="form-control" @bind="_getModel.StartDate"/>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">End Date</label>
-                    <input type="date" class="form-control" @bind="_getModel.EndDate" />
+                    <input type="date" class="form-control" @bind="_getModel.EndDate"/>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Search</label>
-                    <input type="text" class="form-control" @bind="_getModel.SearchTerm" placeholder="Search..." />
+                    <input type="text" class="form-control" @bind="_getModel.SearchTerm" placeholder="Search..."/>
                 </div>
             </div>
             <div class="row mt-3">
@@ -84,53 +84,53 @@
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
                         <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Booking Date</th>
-                                <th>Booked By</th>
-                                <th>Status</th>
-                                <th>Created At</th>
-                                <th>Actions</th>
-                            </tr>
+                        <tr>
+                            <th>ID</th>
+                            <th>Booking Date</th>
+                            <th>Booked By</th>
+                            <th>Status</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
                         </thead>
                         <tbody>
-                            @foreach (var booking in _bookings.Items)
-                            {
-                                <tr>
-                                    <td>@booking.Id.ToString().Substring(0, 8)...</td>
-                                    <td>@booking.BookingDate.ToString("yyyy-MM-dd")</td>
-                                    <td>@booking.Account.FullName</td>
-                                    <td>
+                        @foreach (var booking in _bookings.Items)
+                        {
+                            <tr>
+                                <td>@booking.Id.ToString().Substring(0, 8)...</td>
+                                <td>@booking.BookingDate.ToString("yyyy-MM-dd")</td>
+                                <td>@booking.Account.FullName</td>
+                                <td>
                                         <span class="badge @GetStatusBadgeClass(booking.Status)">
                                             @booking.Status
                                         </span>
-                                    </td>
-                                    <td>@booking.CreatedAt.ToString("g")</td>
-                                    <td>
-                                        <a href="/Booking/Details/@booking.Id" class="btn btn-sm btn-info">
-                                            Details
-                                        </a>
-                                        @if (booking.Status == BookingStatus.Pending)
-                                        {
-                                            <button class="btn btn-sm btn-danger"
+                                </td>
+                                <td>@booking.CreatedAt.ToString("g")</td>
+                                <td>
+                                    <a href="/Booking/Details/@booking.Id" class="btn btn-sm btn-info">
+                                        Details
+                                    </a>
+                                    @if (booking.Status == BookingStatus.Pending)
+                                    {
+                                        <button class="btn btn-sm btn-danger"
                                                 @onclick="@(_ => HandleRejectBooking(booking.Id))">
-                                                Reject
-                                            </button>
-                                            <button class="btn btn-sm btn-success"
+                                            Reject
+                                        </button>
+                                        <button class="btn btn-sm btn-success"
                                                 @onclick="@(_ => HandleApproveBooking(booking.Id))">
-                                                Approve
-                                            </button>
-                                        }
-                                    </td>
-                                </tr>
-                            }
+                                            Approve
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
                         </tbody>
                     </table>
                 </div>
 
                 <Pagination CurrentPage="@_getModel.PageNumber"
-                    TotalPages="@((_bookings.TotalItems + _getModel.PageSize - 1) / _getModel.PageSize)"
-                    OnPageChanged="HandlePageChanged" />
+                            TotalPages="@((_bookings.TotalItems + _getModel.PageSize - 1) / _getModel.PageSize)"
+                            OnPageChanged="HandlePageChanged"/>
             }
         </div>
     </div>
@@ -161,11 +161,14 @@
                 if (accountResult is { IsSuccess: true, Data: not null })
                 {
                     _getModel.DepartmentId = accountResult.Data.DepartmentId;
-                    _currentUserDepartmentId = accountResult.Data.DepartmentId!.Value;
+                    if (accountResult.Data.DepartmentId.HasValue)
+                    {
+                        _currentUserDepartmentId = accountResult.Data.DepartmentId.Value;
+                    }
                 }
             }
         }
-        
+
         if (HubConnection.State == HubConnectionState.Disconnected)
         {
             try
@@ -178,14 +181,17 @@
                 Console.WriteLine($"Error connecting to SignalR: {ex.Message}");
             }
         }
-        
+
         if (HubConnection.State == HubConnectionState.Connected)
         {
             try
             {
                 // Join the department group
-                await HubConnection.SendAsync("JoinDepartmentGroup", _currentUserDepartmentId);
-                
+                if (_currentUserDepartmentId != Guid.Empty)
+                {
+                    await HubConnection.SendAsync("JoinDepartmentGroup", _currentUserDepartmentId);
+                }
+
                 HubConnection.On("ReceiveBookingStatusUpdate", async () =>
                 {
                     Console.WriteLine("Received booking status update");
@@ -198,7 +204,7 @@
                         });
                     }
                 });
-                
+
                 HubConnection.On("ReceiveNewBooking", async () =>
                 {
                     Console.WriteLine("Received new booking");

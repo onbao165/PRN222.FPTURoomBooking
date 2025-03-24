@@ -1,11 +1,11 @@
 @page "/User/Create"
 @page "/User/{Id:guid}"
-@rendermode InteractiveServer
 @using Mapster
 @using Microsoft.AspNetCore.Authorization
+@using PRN222.Assignment.FPTURoomBooking.Repositories.Models
 @using PRN222.Assignment.FPTURoomBooking.Services.Models.Account
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
-@using PRN222.Assignment.FPTURoomBooking.Repositories.Models
+@rendermode InteractiveServer
 @attribute [Authorize(Roles = "Admin")]
 @inject IAccountService UserService
 @inject NavigationManager NavigationManager
@@ -135,132 +135,133 @@
         <div class="card-body p-4">
             @if (_loading)
             {
-                        <div class="text-center p-5">
-                            <div class="spinner-border" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
+                <div class="text-center p-5">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
             }
             else
             {
-                        @if (!string.IsNullOrEmpty(_errorMessage))
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            @_errorMessage
+                        </div>
+                        <button type="button" class="btn-close" @onclick="() => _errorMessage = null"
+                                aria-label="Close"></button>
+                    </div>
+                }
+
+                @if (_isNew)
+                {
+                    <EditForm Model="@_initUser" OnValidSubmit="HandleSubmit">
+                        <DataAnnotationsValidator/>
+                        <ValidationSummary/>
+
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <InputText @bind-Value="_initUser.Email" class="form-control"/>
+                            <ValidationMessage For="@(() => _initUser.Email)"/>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Full Name</label>
+                            <InputText @bind-Value="_initUser.FullName" class="form-control"/>
+                            <ValidationMessage For="@(() => _initUser.FullName)"/>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Username</label>
+                            <InputText @bind-Value="_initUser.Username" class="form-control"/>
+                            <ValidationMessage For="@(() => _initUser.Username)"/>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Password</label>
+                            <InputText type="password" @bind-Value="_initUser.Password" class="form-control"/>
+                            <ValidationMessage For="@(() => _initUser.Password)"/>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Role</label>
+                            <InputSelect @bind-Value="@_initUser.Role" @onchange="OnRoleChange" class="form-select">
+                                <option value="@AccountRole.Admin">Admin</option>
+                                <option value="@AccountRole.Manager">Manager</option>
+                                <option value="@AccountRole.User">User</option>
+                            </InputSelect>
+                            <ValidationMessage For="@(() => _initUser.Role)"/>
+                        </div>
+
+                        @if (_initUser.Role == AccountRole.Manager)
                         {
-                                    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
-                                        <div class="d-flex align-items-center">
-                                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                                            @_errorMessage
-                                        </div>
-                                        <button type="button" class="btn-close" @onclick="() => _errorMessage = null" aria-label="Close"></button>
-                                    </div>
+                            <div class="mb-3">
+                                <label class="form-label">Department</label>
+                                <InputSelect @bind-Value="@_initUser.DepartmentId" class="form-select">
+                                    <option value="">Select Department</option>
+                                    @foreach (var dept in _departments)
+                                    {
+                                        <option value="@dept.Id">@dept.Name</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => _initUser.DepartmentId)"/>
+                            </div>
                         }
 
-                        @if (_isNew)
-                        {
-                                    <EditForm Model="@_initUser" OnValidSubmit="HandleSubmit">
-                                        <DataAnnotationsValidator/>
-                                        <ValidationSummary/>
+                        <div class="alert alert-info">
+                            <strong>Password Requirements:</strong>
+                            <ul class="mb-0">
+                                <li>Must be between 6 and 255 characters</li>
+                                <li>Must contain at least one uppercase letter</li>
+                                <li>Must contain at least one lowercase letter</li>
+                                <li>Must contain at least one number</li>
+                            </ul>
+                        </div>
 
-                                        <div class="mb-3">
-                                            <label class="form-label">Email</label>
-                                            <InputText @bind-Value="_initUser.Email" class="form-control"/>
-                                            <ValidationMessage For="@(() => _initUser.Email)"/>
-                                        </div>
+                        <button type="submit" class="btn btn-primary">Create</button>
+                    </EditForm>
+                }
+                else
+                {
+                    <div class="details-view">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-4">
+                                    <div class="details-label">Email</div>
+                                    <div class="details-value">@_initUser.Email</div>
+                                </div>
 
-                                        <div class="mb-3">
-                                            <label class="form-label">Full Name</label>
-                                            <InputText @bind-Value="_initUser.FullName" class="form-control"/>
-                                            <ValidationMessage For="@(() => _initUser.FullName)"/>
-                                        </div>
+                                <div class="mb-4">
+                                    <div class="details-label">Full Name</div>
+                                    <div class="details-value">@_initUser.FullName</div>
+                                </div>
 
-                                        <div class="mb-3">
-                                            <label class="form-label">Username</label>
-                                            <InputText @bind-Value="_initUser.Username" class="form-control"/>
-                                            <ValidationMessage For="@(() => _initUser.Username)"/>
-                                        </div>
+                                <div class="mb-4">
+                                    <div class="details-label">Username</div>
+                                    <div class="details-value">@_initUser.Username</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-4">
+                                    <div class="details-label">Role</div>
+                                    <div class="details-value">@_initUser.Role</div>
+                                </div>
 
-                                        <div class="mb-3">
-                                            <label class="form-label">Password</label>
-                                            <InputText type="password" @bind-Value="_initUser.Password" class="form-control"/>
-                                            <ValidationMessage For="@(() => _initUser.Password)"/>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label class="form-label">Role</label>
-                                            <InputSelect @bind-Value="@_initUser.Role" @onchange="OnRoleChange" class="form-select">
-                                                <option value="@AccountRole.Admin">Admin</option>
-                                                <option value="@AccountRole.Manager">Manager</option>
-                                                <option value="@AccountRole.User">User</option>
-                                            </InputSelect>
-                                            <ValidationMessage For="@(() => @_initUser.Role)"/>
-                                        </div>
-
-                                        @if (_initUser.Role == AccountRole.Manager)
-                                        {
-                                                    <div class="mb-3">
-                                                        <label class="form-label">Department</label>
-                                                        <InputSelect @bind-Value="@_initUser.DepartmentId" class="form-select">
-                                                            <option value="">Select Department</option>
-                                                            @foreach (var dept in _departments)
-                                                            {
-                                                                        <option value="@dept.Id">@dept.Name</option>
-                                                            }
-                                                        </InputSelect>
-                                                        <ValidationMessage For="@(() => @_initUser.DepartmentId)"/>
-                                                    </div>
-                                        }
-
-                                        <div class="alert alert-info">
-                                            <strong>Password Requirements:</strong>
-                                            <ul class="mb-0">
-                                                <li>Must be between 6 and 255 characters</li>
-                                                <li>Must contain at least one uppercase letter</li>
-                                                <li>Must contain at least one lowercase letter</li>
-                                                <li>Must contain at least one number</li>
-                                            </ul>
-                                        </div>
-
-                                        <button type="submit" class="btn btn-primary">Create</button>
-                                    </EditForm>
-                        }
-                        else
-                        {
-                                    <div class="details-view">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <div class="mb-4">
-                                                    <div class="details-label">Email</div>
-                                                    <div class="details-value">@_initUser.Email</div>
-                                                </div>
-
-                                                <div class="mb-4">
-                                                    <div class="details-label">Full Name</div>
-                                                    <div class="details-value">@_initUser.FullName</div>
-                                                </div>
-
-                                                <div class="mb-4">
-                                                    <div class="details-label">Username</div>
-                                                    <div class="details-value">@_initUser.Username</div>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="mb-4">
-                                                    <div class="details-label">Role</div>
-                                                    <div class="details-value">@_initUser.Role</div>
-                                                </div>
-
-                                                @if (_initUser.Role == AccountRole.Manager)
-                                                {
-                                                            <div class="mb-4">
-                                                                <div class="details-label">Department</div>
-                                                                <div class="details-value">
-                                                                    @(_departments.FirstOrDefault(d => d.Id == _initUser.DepartmentId)?.Name ?? "No Department")
-                                                                </div>
-                                                            </div>
-                                                }
-                                            </div>
+                                @if (_initUser.Role == AccountRole.Manager)
+                                {
+                                    <div class="mb-4">
+                                        <div class="details-label">Department</div>
+                                        <div class="details-value">
+                                            @(_departments.FirstOrDefault(d => d.Id == _initUser.DepartmentId)?.Name ?? "No Department")
                                         </div>
                                     </div>
-                        }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
             }
         </div>
     </div>
@@ -304,6 +305,7 @@
         {
             _initUser.DepartmentId = null; // Clear department selection if not manager
         }
+
         await LoadDepartments(); // Refresh departments when role changes
         StateHasChanged();
     }
@@ -375,4 +377,5 @@
     {
         NavigationManager.NavigateTo("/User");
     }
+
 }

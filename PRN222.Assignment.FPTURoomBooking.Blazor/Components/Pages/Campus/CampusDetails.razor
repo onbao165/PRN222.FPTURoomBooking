@@ -1,13 +1,15 @@
 @page "/Campus/Create"
 @page "/Campus/{Id:guid}"
-@rendermode InteractiveServer
+@using Mapster
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
 @using PRN222.Assignment.FPTURoomBooking.Services.Models.Campus
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
-@using Mapster
+@rendermode InteractiveServer
 @attribute [Authorize(Roles = "Admin")]
 @inject ICampusService CampusService
 @inject NavigationManager NavigationManager
+@inject HubConnection HubConnection
 
 <style>
     .campus-details-card {
@@ -104,76 +106,77 @@
     }
 </style>
 
-<PageTitle>@(_isNew ? "Create Campus" : "Campus Details")</PageTitle>
+<PageTitle>@(IsNew ? "Create Campus" : "Campus Details")</PageTitle>
 
 <div class="container mt-4">
     <div class="card campus-details-card">
         <div class="card-header campus-details-header d-flex justify-content-between align-items-center">
-            <h3 class="campus-details-title">@(_isNew ? "Create Campus" : "Campus Details")</h3>
+            <h3 class="campus-details-title">@(IsNew ? "Create Campus" : "Campus Details")</h3>
             <button class="btn btn-secondary back-button" @onclick="GoBack">Back to List</button>
         </div>
         <div class="card-body p-4">
             @if (_loading)
             {
-                    <div class="text-center p-5">
-                        <div class="spinner-border" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
+                <div class="text-center p-5">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
                     </div>
+                </div>
             }
             else
             {
-                    @if (!string.IsNullOrEmpty(_errorMessage))
-                    {
-                            <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
-                                <div class="d-flex align-items-center">
-                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                                    @_errorMessage
-                                </div>
-                                <button type="button" class="btn-close" @onclick="() => _errorMessage = null" aria-label="Close"></button>
-                            </div>
-                    }
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            @_errorMessage
+                        </div>
+                        <button type="button" class="btn-close" @onclick="() => _errorMessage = null"
+                                aria-label="Close"></button>
+                    </div>
+                }
 
-                    @if (_isNew)
-                    {
-                            <EditForm Model="@_initCampus" OnValidSubmit="HandleSubmit">
-                                <DataAnnotationsValidator />
-                                <ValidationSummary />
+                @if (IsNew)
+                {
+                    <EditForm Model="@_initCampus" OnValidSubmit="HandleSubmit">
+                        <DataAnnotationsValidator/>
+                        <ValidationSummary/>
 
-                                <div class="mb-3">
-                                    <label class="form-label">Name</label>
-                                    <InputText @bind-Value="_initCampus.Name" class="form-control" />
-                                    <ValidationMessage For="@(() => _initCampus.Name)" />
-                                </div>
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <InputText @bind-Value="_initCampus.Name" class="form-control"/>
+                            <ValidationMessage For="@(() => _initCampus.Name)"/>
+                        </div>
 
-                                <div class="mb-3">
-                                    <label class="form-label">Address</label>
-                                    <InputTextArea @bind-Value="_initCampus.Address" class="form-control" rows="3" />
-                                    <ValidationMessage For="@(() => _initCampus.Address)" />
-                                </div>
+                        <div class="mb-3">
+                            <label class="form-label">Address</label>
+                            <InputTextArea @bind-Value="_initCampus.Address" class="form-control" rows="3"/>
+                            <ValidationMessage For="@(() => _initCampus.Address)"/>
+                        </div>
 
-                                <button type="submit" class="btn btn-primary">Create</button>
-                            </EditForm>
-                    }
-                    else
-                    {
-                            <div class="details-view">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-4">
-                                            <div class="details-label">Name</div>
-                                            <div class="details-value">@_initCampus.Name</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-4">
-                                            <div class="details-label">Address</div>
-                                            <div class="details-value">@_initCampus.Address</div>
-                                        </div>
-                                    </div>
+                        <button type="submit" class="btn btn-primary">Create</button>
+                    </EditForm>
+                }
+                else
+                {
+                    <div class="details-view">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-4">
+                                    <div class="details-label">Name</div>
+                                    <div class="details-value">@_initCampus.Name</div>
                                 </div>
                             </div>
-                    }
+                            <div class="col-md-6">
+                                <div class="mb-4">
+                                    <div class="details-label">Address</div>
+                                    <div class="details-value">@_initCampus.Address</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
             }
         </div>
     </div>
@@ -183,6 +186,7 @@
     [Parameter] public Guid? Id { get; set; }
 
     private string? _errorMessage;
+
     private InitCampusModel _initCampus = new()
     {
         Name = "",
@@ -190,17 +194,53 @@
     };
 
     private bool _loading = true;
-    private bool _isNew => Id == null;
+    private bool IsNew => Id == null;
 
     protected override async Task OnInitializedAsync()
     {
-        if (!_isNew)
+        if (!IsNew)
         {
             await LoadCampus();
         }
         else
         {
             _loading = false;
+        }
+
+        if (HubConnection.State == HubConnectionState.Disconnected)
+        {
+            try
+            {
+                await HubConnection.StartAsync();
+                Console.WriteLine("Connected to SignalR hub");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error connecting to SignalR: {ex.Message}");
+            }
+        }
+
+        if (HubConnection.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                HubConnection.On("ReceiveCampusUpdate", async () =>
+                {
+                    Console.WriteLine("Received campus update");
+                    if (NavigationManager.Uri.Contains("/Campus"))
+                    {
+                        await InvokeAsync(async () =>
+                        {
+                            await LoadCampus();
+                            StateHasChanged();
+                        });
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error receiving campus update: {ex.Message}");
+            }
         }
     }
 
@@ -236,6 +276,7 @@
         if (result.IsSuccess)
         {
             NavigationManager.NavigateTo("/Campus");
+            await HubConnection.SendAsync("SendCampusUpdate");
         }
         else
         {
@@ -248,4 +289,5 @@
     {
         NavigationManager.NavigateTo("/Campus");
     }
+
 }

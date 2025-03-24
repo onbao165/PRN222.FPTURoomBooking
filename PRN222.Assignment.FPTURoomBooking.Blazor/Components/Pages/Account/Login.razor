@@ -1,8 +1,8 @@
 @page "/Account/Login"
-@rendermode InteractiveServer
 @using PRN222.Assignment.FPTURoomBooking.Blazor.Models
-@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
 @using PRN222.Assignment.FPTURoomBooking.Repositories.Models
+@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@rendermode InteractiveServer
 @inject IAccountService AccountService
 @inject NavigationManager NavigationManager
 
@@ -50,7 +50,7 @@
 
 @code {
 
-    private LoginModel _loginModel = new();
+    private readonly LoginModel _loginModel = new();
     private string _errorMessage = string.Empty;
 
     private void ClearValidationMessages()
@@ -68,7 +68,7 @@
             if (result.IsSuccess)
             {
                 var account = result.Data;
-                // Only allow Manager role (1) to login
+                // Only allow Manager role (1) and Admin role (3) to access the system
                 if (result.Data!.Role != AccountRole.Manager && result.Data.Role != AccountRole.Admin)
                 {
                     _errorMessage = "Access denied. Only managers and admins can log in to this system.";

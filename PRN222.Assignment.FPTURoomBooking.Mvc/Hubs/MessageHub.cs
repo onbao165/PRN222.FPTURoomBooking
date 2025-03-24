@@ -15,6 +15,21 @@ public class MessageHub : Hub<IMessageHubClient>
         await Clients.User(accountId).ReceiveBookingStatusUpdate();
         await Clients.Group(departmentId).ReceiveBookingStatusUpdate();
     }
+    
+    public async Task SendCampusUpdate()
+    {
+        await Clients.All.ReceiveCampusUpdate();
+    }
+    
+    public async Task SendDepartmentUpdate()
+    {
+        await Clients.All.ReceiveDepartmentUpdate();
+    }
+    
+    public async Task SendRoomUpdate()
+    {
+        await Clients.All.ReceiveRoomUpdate();
+    }
 
     public async Task JoinDepartmentGroup(string departmentId)
     {

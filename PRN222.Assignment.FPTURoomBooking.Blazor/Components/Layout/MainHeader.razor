@@ -1,0 +1,37 @@
+@using System.Security.Claims
+@rendermode InteractiveServer
+@inject NavigationManager NavigationManager
+@inject IHttpContextAccessor HttpContextAccessor
+
+<div class="bg-light border-bottom py-2 px-4 d-flex justify-content-end align-items-center" style="height: 3.5rem;">
+    @if (_isAuthenticated)
+    {
+        <span class="me-3">Welcome, @_fullName!</span>
+        <a href="/Account/Profile" class="me-3 text-decoration-none">Profile</a>
+        <button class="btn btn-link text-decoration-none p-0" @onclick="HandleLogout">Logout</button>
+    }
+    else
+    {
+        <a href="/Account/Login" class="text-decoration-none">Login</a>
+    }
+</div>
+
+@code {
+    private bool _isAuthenticated;
+    private string _fullName = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        var user = HttpContextAccessor.HttpContext?.User;
+        _isAuthenticated = user?.Identity?.IsAuthenticated == true;
+        if (_isAuthenticated)
+        {
+            _fullName = user!.FindFirstValue(ClaimTypes.Name) ?? "User";
+        }
+    }
+
+    private void HandleLogout()
+    {
+        NavigationManager.NavigateTo("/Account/LogoutProcessor", true);
+    }
+}

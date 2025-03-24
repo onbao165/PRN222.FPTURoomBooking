@@ -1,13 +1,15 @@
 @page "/Campus"
-@rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
 @using PRN222.Assignment.FPTURoomBooking.Services.Models.Campus
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
-@using Microsoft.AspNetCore.WebUtilities
+@using PRN222.Assignment.FPTURoomBooking.Services.Utils
+@rendermode InteractiveServer
 @attribute [Authorize(Roles = "Admin")]
 @inject ICampusService CampusService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JsRuntime
+@inject HubConnection HubConnection
 
 <style>
     .table-responsive {
@@ -188,13 +190,13 @@
 </div>
 
 @code {
-    private Services.Utils.PaginationResult<CampusModel>? _campuses;
+    private PaginationResult<CampusModel>? _campuses;
     private bool _loading = true;
     private string _searchTerm = "";
     private string _orderBy = "name";
     private bool _isDescending;
     private int _pageNumber = 1;
-    private const int _pageSize = 10;
+    private const int PageSize = 10;
 
 
     protected override void OnInitialized()
@@ -208,6 +210,41 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadCampuses(_pageNumber);
+        if (HubConnection.State == HubConnectionState.Disconnected)
+        {
+            try
+            {
+                await HubConnection.StartAsync();
+                Console.WriteLine("Connected to SignalR hub");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error connecting to SignalR: {ex.Message}");
+            }
+        }
+
+        if (HubConnection.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                HubConnection.On("ReceiveCampusUpdate", async () =>
+                {
+                    Console.WriteLine("Received campus update");
+                    if (NavigationManager.Uri.Contains("/Campus"))
+                    {
+                        await InvokeAsync(async () =>
+                        {
+                            await LoadCampuses(_pageNumber);
+                            StateHasChanged();
+                        });
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error receiving campus update: {ex.Message}");
+            }
+        }
     }
 
     private void UpdateUrl()
@@ -234,7 +271,7 @@
             queryParameters.Add("pageNumber", _pageNumber);
         }
 
-        queryParameters.Add("pageSize", _pageSize);
+        queryParameters.Add("pageSize", PageSize);
 
         var uri = NavigationManager.GetUriWithQueryParameters(queryParameters);
         NavigationManager.NavigateTo(uri);
@@ -248,7 +285,7 @@
             var result = await CampusService.GetPagedAsync(new GetCampusModel
             {
                 PageNumber = pageNumber,
-                PageSize = _pageSize,
+                PageSize = PageSize,
                 SearchTerm = _searchTerm,
                 OrderBy = _orderBy,
                 IsDescending = _isDescending
@@ -310,6 +347,7 @@
         if (result.IsSuccess)
         {
             await LoadCampuses(_pageNumber);
+            await HubConnection.SendAsync("SendCampusUpdate");
         }
         else
         {
