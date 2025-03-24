@@ -1,0 +1,15 @@
+@page "/Account/LogoutProcessor"
+@inject NavigationManager NavigationManager
+@inject IHttpContextAccessor HttpContextAccessor
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await HttpContextAccessor.HttpContext!.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        NavigationManager.NavigateTo("/Account/Login", true);
+    }
+}
+
+<div>Processing logout...</div>

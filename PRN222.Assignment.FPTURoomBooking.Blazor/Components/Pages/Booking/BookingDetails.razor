@@ -1,22 +1,18 @@
 @page "/Booking/Details/{Id:guid}"
 @rendermode InteractiveServer
-@using System.Security.Claims
 @using Mapster
 @using Microsoft.AspNetCore.Authorization
 @using PRN222.Assignment.FPTURoomBooking.Blazor.Models
 @using PRN222.Assignment.FPTURoomBooking.Repositories.Models
 @using PRN222.Assignment.FPTURoomBooking.Services.Models.RoomSlot
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
-@using Microsoft.AspNetCore.SignalR
 @using Microsoft.AspNetCore.SignalR.Client
-@using PRN222.Assignment.FPTURoomBooking.Blazor.Components.Layout
-@using PRN222.Assignment.FPTURoomBooking.Blazor.Hubs
+@using System.Security.Claims
+@inject IHttpContextAccessor HttpContextAccessor
 
 @inject IBookingService BookingService
 @inject IRoomSlotService RoomSlotService
 @inject NavigationManager NavigationManager
-@inject IHttpContextAccessor HttpContextAccessor
-@inject IHubContext<MessageHub> MessageHubContext
 @inject HubConnection HubConnection
 @attribute [Authorize]
 
@@ -60,24 +56,26 @@
                         </div>
 
                         <h4 class="mt-4">Room Slots</h4>
-                        @if (_booking.RoomSlots?.Any() == true)
+                        @if (_booking.RoomSlots.Any())
                         {
                             <div class="table-responsive">
                                 <table class="table table-bordered table-hover">
                                     <thead class="table-light">
-                                        <tr>
-                                            <th>Room</th>
-                                            <th>Time Slot</th>
-                                        </tr>
+                                    <tr>
+                                        <th>Room</th>
+                                        <th>Time Slot</th>
+                                        <th>Time Range</th>
+                                    </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach (var slot in _booking.RoomSlots)
-                                        {
-                                            <tr>
-                                                <td>@slot.RoomName</td>
-                                                <td>@slot.TimeSlot</td>
-                                            </tr>
-                                        }
+                                    @foreach (var slot in _booking.RoomSlots)
+                                    {
+                                        <tr>
+                                            <td>@slot.RoomName</td>
+                                            <td>@slot.TimeSlot</td>
+                                            <td>@slot.TimeSlotText</td>
+                                        </tr>
+                                    }
                                     </tbody>
                                 </table>
                             </div>
@@ -115,15 +113,32 @@
 </div>
 
 @code {
-    [Parameter]
-    public Guid Id { get; set; }
+    [Parameter] public Guid Id { get; set; }
 
     private bool _loading = true;
     private BookingDetailsViewModel? _booking;
     private Guid _currentUserId;
+    private Guid _currentUserDepartmentId;
 
     protected override async Task OnInitializedAsync()
     {
+        // Get current user ID from claims
+        var user = HttpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
+            {
+                _currentUserId = userGuid;
+            }
+
+            var departmentId = user.FindFirstValue("DepartmentId");
+            if (!string.IsNullOrEmpty(departmentId) && Guid.TryParse(departmentId, out var departmentGuid))
+            {
+                _currentUserDepartmentId = departmentGuid;
+            }
+        }
+
         if (HubConnection.State == HubConnectionState.Disconnected)
         {
             try
@@ -136,7 +151,29 @@
                 Console.WriteLine($"Error connecting to SignalR: {ex.Message}");
             }
         }
-
+        
+        if (HubConnection.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                // Join the department group
+                await HubConnection.SendAsync("JoinDepartmentGroup", _currentUserDepartmentId);
+                
+                HubConnection.On("ReceiveBookingStatusUpdate", async () =>
+                {
+                    Console.WriteLine("Received booking status update");
+                    if (NavigationManager.Uri.Contains("/Booking"))
+                    {
+                        await LoadBooking();
+                        StateHasChanged();
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error joining department group: {ex.Message}");
+            }
+        }
         await LoadBooking();
     }
 
@@ -166,10 +203,10 @@
             };
 
             var roomSlotsResult = await RoomSlotService.GetPagedAsync(roomSlotsModel);
-            if (roomSlotsResult.IsSuccess && roomSlotsResult.Data?.Items != null)
+            if (roomSlotsResult is { IsSuccess: true, Data.Items: not null })
             {
                 _booking.RoomSlots = roomSlotsResult.Data.Items
-                .Adapt<List<BookingRoomSlotViewModel>>();
+                    .Adapt<List<BookingRoomSlotViewModel>>();
             }
         }
         catch (Exception ex)
@@ -182,7 +219,7 @@
         }
     }
 
-    private string GetStatusBadgeClass(BookingStatus status) => status switch
+    private static string GetStatusBadgeClass(BookingStatus status) => status switch
     {
         BookingStatus.Pending => "bg-warning text-dark",
         BookingStatus.Approved => "bg-success",
@@ -208,7 +245,8 @@
                 // Use the injected hubConnection directly
                 if (HubConnection.State == HubConnectionState.Connected)
                 {
-                    await HubConnection.SendAsync("SendBookingStatusUpdate");
+                    // Send notification to the user and all managers in the department
+                    await HubConnection.SendAsync("SendBookingStatusUpdate", _booking.AccountId, _currentUserDepartmentId);
                 }
             }
         }
@@ -235,7 +273,8 @@
                 // Use the injected hubConnection directly
                 if (HubConnection.State == HubConnectionState.Connected)
                 {
-                    await HubConnection.SendAsync("SendBookingStatusUpdate");
+                    // Send notification to the user and all managers in the department
+                    await HubConnection.SendAsync("SendBookingStatusUpdate", _booking.AccountId, _currentUserDepartmentId);
                 }
             }
         }
@@ -249,4 +288,5 @@
     {
         NavigationManager.NavigateTo("/Booking");
     }
+
 }

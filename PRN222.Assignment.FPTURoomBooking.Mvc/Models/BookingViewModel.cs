@@ -99,9 +99,4 @@ public class EditBookingViewModel
 
     [Display(Name = "Booked By")] public string AccountName { get; set; } = string.Empty;
 
-    public bool IsManager { get; set; }
-
-    [Display(Name = "Reason for Rejection")]
-    [StringLength(500, ErrorMessage = "Reason cannot exceed 500 characters")]
-    public string? RejectionReason { get; set; }
 }

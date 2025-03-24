@@ -78,7 +78,8 @@ public class DepartmentController : Controller
 
         var resultModel = new DepartmentListViewModel
         {
-            Departments = new PaginationResult<DepartmentViewModel>(departments, result.Data.TotalItems, result.Data.PageNumber, result.Data.PageSize),
+            Departments = new PaginationResult<DepartmentViewModel>(departments, result.Data.TotalItems,
+                result.Data.PageNumber, result.Data.PageSize),
             SearchTerm = model.SearchTerm,
             OrderBy = model.OrderBy,
             IsDescending = model.IsDescending,

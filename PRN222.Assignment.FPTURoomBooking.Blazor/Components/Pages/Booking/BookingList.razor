@@ -3,16 +3,16 @@
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.SignalR.Client
-@using PRN222.Assignment.FPTURoomBooking.Blazor.Components.Layout
 @using PRN222.Assignment.FPTURoomBooking.Repositories.Models
 @using PRN222.Assignment.FPTURoomBooking.Services.Models.Booking
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
 @using PRN222.Assignment.FPTURoomBooking.Blazor.Components.Shared
 @using PRN222.Assignment.FPTURoomBooking.Services.Utils
+@inject NavigationManager NavigationManager
 @inject IBookingService BookingService
 @inject IAccountService AccountService
-@inject NavigationManager NavigationManager
 @inject IHttpContextAccessor HttpContextAccessor
+@inject HubConnection HubConnection
 @attribute [Authorize]
 
 <PageTitle>Booking List</PageTitle>
@@ -113,11 +113,11 @@
                                         @if (booking.Status == BookingStatus.Pending)
                                         {
                                             <button class="btn btn-sm btn-danger"
-                                                @onclick="@(e => HandleRejectBooking(booking.Id))">
+                                                @onclick="@(_ => HandleRejectBooking(booking.Id))">
                                                 Reject
                                             </button>
                                             <button class="btn btn-sm btn-success"
-                                                @onclick="@(e => HandleApproveBooking(booking.Id))">
+                                                @onclick="@(_ => HandleApproveBooking(booking.Id))">
                                                 Approve
                                             </button>
                                         }
@@ -137,11 +137,9 @@
 </div>
 
 @code {
-    [CascadingParameter]
-    public MainLayout? MainLayout { get; set; }
-    
     private bool _loading = true;
     private PaginationResult<BookingModel>? _bookings;
+    private Guid _currentUserDepartmentId;
 
     private GetBookingModel _getModel = new()
     {
@@ -157,13 +155,66 @@
         if (user?.Identity?.IsAuthenticated == true)
         {
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out Guid userGuid))
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
             {
                 var accountResult = await AccountService.GetAsync(userGuid);
-                if (accountResult.IsSuccess && accountResult.Data != null)
+                if (accountResult is { IsSuccess: true, Data: not null })
                 {
                     _getModel.DepartmentId = accountResult.Data.DepartmentId;
+                    _currentUserDepartmentId = accountResult.Data.DepartmentId!.Value;
                 }
+            }
+        }
+        
+        if (HubConnection.State == HubConnectionState.Disconnected)
+        {
+            try
+            {
+                await HubConnection.StartAsync();
+                Console.WriteLine("Connected to SignalR hub");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error connecting to SignalR: {ex.Message}");
+            }
+        }
+        
+        if (HubConnection.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                // Join the department group
+                await HubConnection.SendAsync("JoinDepartmentGroup", _currentUserDepartmentId);
+                
+                HubConnection.On("ReceiveBookingStatusUpdate", async () =>
+                {
+                    Console.WriteLine("Received booking status update");
+                    if (NavigationManager.Uri.Contains("/Booking"))
+                    {
+                        await InvokeAsync(async () =>
+                        {
+                            await LoadBookings();
+                            StateHasChanged();
+                        });
+                    }
+                });
+                
+                HubConnection.On("ReceiveNewBooking", async () =>
+                {
+                    Console.WriteLine("Received new booking");
+                    if (NavigationManager.Uri.Contains("/Booking"))
+                    {
+                        await InvokeAsync(async () =>
+                        {
+                            await LoadBookings();
+                            StateHasChanged();
+                        });
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error joining department group: {ex.Message}");
             }
         }
 
@@ -230,7 +281,7 @@
         if (user?.Identity?.IsAuthenticated == true)
         {
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out Guid userGuid))
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
             {
                 managerId = userGuid;
             }
@@ -245,11 +296,11 @@
         if (result.IsSuccess)
         {
             await LoadBookings();
-            // Use the hub connection from MainLayout
-            var hubConnection = MainLayout?.GetHubConnection();
-            if (hubConnection is not null)
+            var booking = await BookingService.GetAsync(bookingId);
+            if (HubConnection.State == HubConnectionState.Connected)
             {
-                await hubConnection.SendAsync("SendBookingStatusUpdate");
+                // Send notification to the user and all managers in the department
+                await HubConnection.SendAsync("SendBookingStatusUpdate", booking.Data!.AccountId, _currentUserDepartmentId);
             }
         }
     }
@@ -262,7 +313,7 @@
         if (user?.Identity?.IsAuthenticated == true)
         {
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out Guid userGuid))
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
             {
                 managerId = userGuid;
             }
@@ -277,11 +328,12 @@
         if (result.IsSuccess)
         {
             await LoadBookings();
+            var booking = await BookingService.GetAsync(bookingId);
             // Use the hub connection from MainLayout
-            var hubConnection = MainLayout?.GetHubConnection();
-            if (hubConnection is not null)
+            if (HubConnection.State == HubConnectionState.Connected)
             {
-                await hubConnection.SendAsync("SendBookingStatusUpdate", bookingId, BookingStatus.Rejected);
+                // Send notification to the user and all managers in the department
+                await HubConnection.SendAsync("SendBookingStatusUpdate", booking.Data!.AccountId, _currentUserDepartmentId);
             }
         }
     }

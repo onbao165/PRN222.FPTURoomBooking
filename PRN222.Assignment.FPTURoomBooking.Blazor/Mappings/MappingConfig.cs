@@ -5,7 +5,7 @@ using PRN222.Assignment.FPTURoomBooking.Services.Models.RoomSlot;
 
 namespace PRN222.Assignment.FPTURoomBooking.Blazor.Mappings;
 
-public static class BlazorMappingConfig
+public static class MappingConfig
 {
     public static void RegisterMappings()
     {

@@ -1,23 +1,22 @@
 ﻿@inherits LayoutComponentBase
 @using System.Security.Claims
-@using Microsoft.AspNetCore.Authentication
-@using Microsoft.AspNetCore.Authentication.Cookies
 @using Microsoft.AspNetCore.SignalR.Client
 @inject NavigationManager NavigationManager
 @inject IHttpContextAccessor HttpContextAccessor
+@inject HubConnection HubConnection
 
 <div class="page">
     <div class="sidebar">
-        <NavMenu />
+        <NavMenu/>
     </div>
 
     <main>
         <div class="top-row px-4">
-            @if (isAuthenticated)
+            @if (_isAuthenticated)
             {
-                <span class="me-3">Welcome, @fullName!</span>
+                <span class="me-3">Welcome, @_fullName!</span>
                 <a href="/Account/Profile" class="me-3">Profile</a>
-                <button class="btn btn-link" @onclick="LogoutAsync">Logout</button>
+                <button class="btn btn-link" @onclick="HandleLogout">Logout</button>
             }
             else
             {
@@ -38,52 +37,51 @@
 </div>
 
 @code {
-    private bool isAuthenticated = false;
-    private string fullName = string.Empty;
-    private HubConnection? hubConnection;
+    private bool _isAuthenticated;
+    private string _fullName = string.Empty;
+    private Guid _currentUserDepartmentId;
 
     protected override async Task OnInitializedAsync()
     {
         var user = HttpContextAccessor.HttpContext?.User;
-        isAuthenticated = user?.Identity?.IsAuthenticated ?? false;
-
-        if (isAuthenticated)
+        _isAuthenticated = user?.Identity?.IsAuthenticated == true;
+        if (_isAuthenticated)
         {
-            fullName = user!.FindFirstValue(ClaimTypes.Name) ?? "User";
+            _fullName = user!.FindFirstValue(ClaimTypes.Name) ?? "User";
+            var departmentId = user!.FindFirstValue("DepartmentId");
+            if (!string.IsNullOrEmpty(departmentId) && Guid.TryParse(departmentId, out var departmentGuid))
+            {
+                _currentUserDepartmentId = departmentGuid;
+            }
         }
 
-        hubConnection = new HubConnectionBuilder()
-        .WithUrl("https://localhost:5000/messageHub") // Replace with your MVC SignalR hub URL
-        .WithAutomaticReconnect()
-        .Build();
-
-        try
+        if (HubConnection.State == HubConnectionState.Disconnected)
         {
-            await hubConnection.StartAsync();
-            Console.WriteLine("Connected to SignalR hub");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error connecting to SignalR: {ex.Message}");
+            try
+            {
+                await HubConnection.StartAsync();
+                Console.WriteLine("Connected to SignalR hub");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error connecting to SignalR: {ex.Message}");
+            }
         }
 
         await base.OnInitializedAsync();
     }
 
-    private async Task LogoutAsync()
+    private void HandleLogout()
     {
-        await HttpContextAccessor.HttpContext!.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        NavigationManager.NavigateTo("/Account/Login", true);
+        NavigationManager.NavigateTo("/Account/LogoutProcessor", true);
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (hubConnection is not null)
+        if (HubConnection.State == HubConnectionState.Connected && _currentUserDepartmentId != Guid.Empty)
         {
-            await hubConnection.DisposeAsync();
+            await HubConnection.SendAsync("LeaveDepartmentGroup", _currentUserDepartmentId);
         }
     }
 
-    // Method to get the hub connection that can be used by other components
-    public HubConnection? GetHubConnection() => hubConnection;
 }

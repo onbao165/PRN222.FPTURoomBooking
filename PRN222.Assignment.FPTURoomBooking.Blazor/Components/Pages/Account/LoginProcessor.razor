@@ -4,6 +4,8 @@
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.AspNetCore.SignalR.Client
+@inject HubConnection HubConnection
 
 @code {
     [Parameter] [SupplyParameterFromQuery] public string? Id { get; set; }
@@ -15,6 +17,8 @@
     [Parameter] [SupplyParameterFromQuery] public string? Email { get; set; }
 
     [Parameter] [SupplyParameterFromQuery] public string? Role { get; set; }
+    
+    [Parameter] [SupplyParameterFromQuery] public string? DepartmentId { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -26,11 +30,12 @@
 
         var claims = new List<Claim>
         {
-            new Claim("Username ", Username ?? ""),
-            new Claim(ClaimTypes.NameIdentifier, Id ?? ""),
-            new Claim(ClaimTypes.Name, Fullname ?? ""),
-            new Claim(ClaimTypes.Email, Email ?? ""),
-            new Claim(ClaimTypes.Role, Role ?? ""),
+            new("Username ", Username ?? ""),
+            new(ClaimTypes.NameIdentifier, Id ?? ""),
+            new(ClaimTypes.Name, Fullname ?? ""),
+            new(ClaimTypes.Email, Email ?? ""),
+            new(ClaimTypes.Role, Role ?? ""),
+            new("DepartmentId", DepartmentId ?? "")
         };
 
         var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -44,6 +49,19 @@
             CookieAuthenticationDefaults.AuthenticationScheme,
             new ClaimsPrincipal(claimsIdentity),
             authProperties);
+        
+        if (HubConnection.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                // Join the department group
+                await HubConnection.SendAsync("JoinDepartmentGroup", DepartmentId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error joining department group: {ex.Message}");
+            }
+        }
 
         NavigationManager.NavigateTo("/", true);
     }

@@ -45,7 +45,8 @@ public class CampusController : Controller
 
         var resultModel = new CampusListViewModel
         {
-            Campuses = new PaginationResult<CampusViewModel>(result.Data.Items.Adapt<List<CampusViewModel>>(), result.Data.TotalItems, result.Data.PageNumber, result.Data.PageSize),
+            Campuses = new PaginationResult<CampusViewModel>(result.Data.Items.Adapt<List<CampusViewModel>>(),
+                result.Data.TotalItems, result.Data.PageNumber, result.Data.PageSize),
             SearchTerm = model.SearchTerm,
             OrderBy = model.OrderBy,
             IsDescending = model.IsDescending,

@@ -134,8 +134,8 @@ public class BookingController : Controller
 
         var resultModel = new BookingListViewModel
         {
-            Bookings = new PaginationResult<BookingViewModel>(bookings, result.Data.PageNumber, result.Data.PageSize,
-                result.Data.TotalItems),
+            Bookings = new PaginationResult<BookingViewModel>(bookings, result.Data.TotalItems, result.Data.PageNumber,
+                result.Data.PageSize),
             SearchTerm = model.SearchTerm,
             OrderBy = model.OrderBy,
             IsDescending = model.IsDescending,
@@ -301,15 +301,19 @@ public class BookingController : Controller
         var result = await _bookingService.CreateBookingWithRoomSlots(booking, roomSlots);
 
         if (result is { IsSuccess: true, Data: not null })
+        {
+            // Notify the managers that a new booking has been created
+            var roomId = roomSlots.FirstOrDefault()?.RoomId;
+            var room = await _roomService.GetAsync(roomId!.Value);
+            var departmentId = room.Data!.Department.Id;
+            await _hubContext.Clients.Group(departmentId.ToString()).ReceiveNewBooking();
             return RedirectToAction(nameof(Details), new { id = result.Data.Id });
+        }
+
         ModelState.AddModelError(string.Empty, result.Error ?? "Failed to create booking");
         await PopulateAvailableRoomSlots(model);
         await PopulateDropdowns(model.CampusId, model.DepartmentId);
-        // Notify the managers that a new booking has been created
-        var roomId = roomSlots.FirstOrDefault()?.RoomId;
-        var room = await _roomService.GetAsync(roomId!.Value);
-        var departmentId = room.Data!.Department.Id;
-        await _hubContext.Clients.Group(departmentId.ToString()).ReceiveNewBooking();
+
         return View(model);
     }
 
@@ -343,7 +347,6 @@ public class BookingController : Controller
         }
 
         var model = bookingResult.Data.Adapt<EditBookingViewModel>();
-        model.IsManager = false;
 
         // Add account name if available
         model.AccountName = bookingResult.Data.Account.FullName;
@@ -794,7 +797,5 @@ public class BookingController : Controller
                 model.RoomSlots.Add(roomSlotViewModel);
             }
         }
-
-        model.IsManager = false;
     }
 }

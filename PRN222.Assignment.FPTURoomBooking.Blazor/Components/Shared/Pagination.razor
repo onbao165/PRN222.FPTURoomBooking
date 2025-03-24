@@ -5,7 +5,7 @@
             <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
                 <button class="page-link" @onclick="() => OnPageChanged.InvokeAsync(CurrentPage - 1)">Previous</button>
             </li>
-            @for (int i = 1; i <= TotalPages; i++)
+            @for (var i = 1; i <= TotalPages; i++)
             {
                 var pageNumber = i;
                 <li class="page-item @(pageNumber == CurrentPage ? "active" : "")">

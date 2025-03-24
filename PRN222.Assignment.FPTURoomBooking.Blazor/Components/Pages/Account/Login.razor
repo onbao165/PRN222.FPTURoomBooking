@@ -2,7 +2,6 @@
 @rendermode InteractiveServer
 @using PRN222.Assignment.FPTURoomBooking.Blazor.Models
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
-@using System.Security.Claims
 @using PRN222.Assignment.FPTURoomBooking.Repositories.Models
 @inject IAccountService AccountService
 @inject NavigationManager NavigationManager
@@ -82,16 +81,16 @@
                                              $"username={Uri.EscapeDataString(account.Username)}&" +
                                              $"fullname={Uri.EscapeDataString(account.FullName)}&" +
                                              $"email={Uri.EscapeDataString(account.Email)}&" +
-                                             $"role={Uri.EscapeDataString(account.Role.ToString())}",
-                    forceLoad:
-                    true);
+                                             $"role={Uri.EscapeDataString(account.Role.ToString())}&" +
+                                             $"departmentId={Uri.EscapeDataString(account.DepartmentId.ToString()!)}",
+                    forceLoad: true);
             }
             else
             {
                 _errorMessage = result.Error!;
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             _errorMessage = "An error occurred during login. Please try again.";
         }
