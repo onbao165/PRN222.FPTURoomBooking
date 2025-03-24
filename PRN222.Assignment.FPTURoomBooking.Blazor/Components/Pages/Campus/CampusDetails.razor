@@ -1,0 +1,251 @@
+@page "/Campus/Create"
+@page "/Campus/{Id:guid}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Campus
+@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@using Mapster
+@attribute [Authorize(Roles = "Admin")]
+@inject ICampusService CampusService
+@inject NavigationManager NavigationManager
+
+<style>
+    .campus-details-card {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border: none;
+        border-radius: 8px;
+    }
+
+    .campus-details-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+        padding: 1.5rem;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .campus-details-title {
+        color: #2c3e50;
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .back-button {
+        padding: 0.5rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .back-button:hover {
+        background-color: #4a5568;
+        transform: translateY(-1px);
+    }
+
+    .form-label {
+        color: #2d3748;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control {
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        padding: 0.625rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        border-color: #3182ce;
+        box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+    }
+
+    .validation-message {
+        font-size: 0.875rem;
+        color: #e53e3e;
+        margin-top: 0.25rem;
+    }
+
+    .details-view {
+        background-color: #fff;
+        padding: 2rem;
+        border-radius: 8px;
+    }
+
+    .details-label {
+        color: #4a5568;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }
+
+    .details-value {
+        color: #2d3748;
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+        padding: 0.5rem;
+        background-color: #f7fafc;
+        border-radius: 6px;
+        border: 1px solid #edf2f7;
+    }
+
+    .alert {
+        border-radius: 8px;
+        border: none;
+    }
+
+    .alert-danger {
+        background-color: #fff5f5;
+        color: #c53030;
+        border-left: 4px solid #fc8181;
+    }
+
+    .spinner-border {
+        color: #3182ce;
+    }
+</style>
+
+<PageTitle>@(_isNew ? "Create Campus" : "Campus Details")</PageTitle>
+
+<div class="container mt-4">
+    <div class="card campus-details-card">
+        <div class="card-header campus-details-header d-flex justify-content-between align-items-center">
+            <h3 class="campus-details-title">@(_isNew ? "Create Campus" : "Campus Details")</h3>
+            <button class="btn btn-secondary back-button" @onclick="GoBack">Back to List</button>
+        </div>
+        <div class="card-body p-4">
+            @if (_loading)
+            {
+                    <div class="text-center p-5">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+            }
+            else
+            {
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                            <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    @_errorMessage
+                                </div>
+                                <button type="button" class="btn-close" @onclick="() => _errorMessage = null" aria-label="Close"></button>
+                            </div>
+                    }
+
+                    @if (_isNew)
+                    {
+                            <EditForm Model="@_initCampus" OnValidSubmit="HandleSubmit">
+                                <DataAnnotationsValidator />
+                                <ValidationSummary />
+
+                                <div class="mb-3">
+                                    <label class="form-label">Name</label>
+                                    <InputText @bind-Value="_initCampus.Name" class="form-control" />
+                                    <ValidationMessage For="@(() => _initCampus.Name)" />
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Address</label>
+                                    <InputTextArea @bind-Value="_initCampus.Address" class="form-control" rows="3" />
+                                    <ValidationMessage For="@(() => _initCampus.Address)" />
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">Create</button>
+                            </EditForm>
+                    }
+                    else
+                    {
+                            <div class="details-view">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-4">
+                                            <div class="details-label">Name</div>
+                                            <div class="details-value">@_initCampus.Name</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-4">
+                                            <div class="details-label">Address</div>
+                                            <div class="details-value">@_initCampus.Address</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                    }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private string? _errorMessage;
+    private InitCampusModel _initCampus = new()
+    {
+        Name = "",
+        Address = ""
+    };
+
+    private bool _loading = true;
+    private bool _isNew => Id == null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!_isNew)
+        {
+            await LoadCampus();
+        }
+        else
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadCampus()
+    {
+        try
+        {
+            _loading = true;
+            _errorMessage = null;
+            var result = await CampusService.GetAsync(Id!.Value);
+            if (result.IsSuccess)
+            {
+                _initCampus = result.Data.Adapt<InitCampusModel>();
+            }
+            else
+            {
+                _errorMessage = result.Error;
+                NavigationManager.NavigateTo("/Campus");
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        _errorMessage = null;
+        var model = _initCampus.Adapt<CampusModel>();
+        var result = await CampusService.CreateAsync(model);
+
+        if (result.IsSuccess)
+        {
+            NavigationManager.NavigateTo("/Campus");
+        }
+        else
+        {
+            _errorMessage = result.Error;
+            StateHasChanged();
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/Campus");
+    }
+}

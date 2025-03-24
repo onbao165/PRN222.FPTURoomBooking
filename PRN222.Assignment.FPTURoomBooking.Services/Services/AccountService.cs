@@ -21,9 +21,36 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             _passwordHasher = passwordHasher;
         }
 
-        public async Task<Result> CreateAsync(AccountModel model)
+        public async Task<Result> CreateAsync(InitAccountModel model)
         {
+            var existingAccount = await _unitOfWork.AccountRepository.GetQueryable()
+                .FirstOrDefaultAsync(x => x.Email == model.Email);
+            if (existingAccount != null)
+            {
+                return Result.Failure("Account already exists");
+            }
+
+            switch (model)
+            {
+                case { Role: AccountRole.Manager, DepartmentId: null }:
+                    return Result.Failure("Manager must belong to a department");
+                case { Role: not AccountRole.Manager, DepartmentId: not null }:
+                    return Result.Failure("User and Admin cannot belong to a department");
+                case { Role: AccountRole.Manager, DepartmentId: not null }:
+                    break;
+            }
+
+            if (model.DepartmentId.HasValue)
+            {
+                var department = await _unitOfWork.DepartmentRepository.GetByIdAsync(model.DepartmentId.Value);
+                if (department == null)
+                {
+                    return Result.Failure("Department not found");
+                }
+            }
+
             var entity = model.Adapt<Account>();
+            entity.Password = _passwordHasher.HashPassword(model.Password);
             _unitOfWork.AccountRepository.Add(entity);
             await _unitOfWork.SaveChangesAsync();
             return Result.Success();
@@ -58,7 +85,9 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
 
             if (!string.IsNullOrEmpty(model.SearchTerm))
             {
-                filter = filter.CombineAndAlsoExpressions(x => true);
+                filter = filter.CombineAndAlsoExpressions(x => x.Email.Contains(model.SearchTerm) ||
+                                                               x.Username.Contains(model.SearchTerm) ||
+                                                               x.FullName.Contains(model.SearchTerm));
             }
 
             if (!model.DepartmentId.IsNullOrGuidEmpty())
@@ -88,15 +117,55 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             return entity.Adapt<AccountModel>();
         }
 
-        public async Task<Result> UpdateAsync(AccountModel model)
+        public async Task<Result> UpdateAsync(Guid id, InitAccountModel model)
         {
-            var entity = await _unitOfWork.AccountRepository.GetByIdAsync(model.Id);
+            var entity = await _unitOfWork.AccountRepository.GetByIdAsync(id);
             if (entity == null)
             {
                 return Result.Failure("Account not found");
             }
 
-            entity = model.Adapt(entity);
+            // Check if email is being changed and if it's already in use
+            if (entity.Email != model.Email)
+            {
+                var existingAccount = await _unitOfWork.AccountRepository.GetQueryable()
+                    .FirstOrDefaultAsync(x => x.Email == model.Email);
+                if (existingAccount != null)
+                {
+                    return Result.Failure("Email is already in use by another account");
+                }
+            }
+
+            // Validate department based on role
+            switch (model)
+            {
+                case { Role: AccountRole.Manager, DepartmentId: null }:
+                    return Result.Failure("Manager must belong to a department");
+                case { Role: not AccountRole.Manager, DepartmentId: not null }:
+                    return Result.Failure("User and Admin cannot belong to a department");
+                case { Role: AccountRole.Manager, DepartmentId: not null }:
+                    var department = await _unitOfWork.DepartmentRepository.GetByIdAsync(model.DepartmentId.Value);
+                    if (department == null)
+                    {
+                        return Result.Failure("Department not found");
+                    }
+
+                    break;
+            }
+
+            // Update basic properties
+            entity.Email = model.Email;
+            entity.Username = model.Username;
+            entity.FullName = model.FullName;
+            entity.Role = model.Role;
+            entity.DepartmentId = model.DepartmentId;
+
+            // Only update password if a new one is provided
+            if (!string.IsNullOrEmpty(model.Password))
+            {
+                entity.Password = _passwordHasher.HashPassword(model.Password);
+            }
+
             _unitOfWork.AccountRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
             return Result.Success();
@@ -115,6 +184,21 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             }
 
             return entity.Adapt<AccountModel>();
+        }
+
+        public async Task<Result<List<Department>>> GetDepartmentsAsync()
+        {
+            try
+            {
+                var departments = await _unitOfWork.DepartmentRepository.GetQueryable()
+                    .OrderBy(d => d.Name)
+                    .ToListAsync();
+                return departments;
+            }
+            catch (Exception ex)
+            {
+                return Result<List<Department>>.Failure($"Failed to load departments: {ex.Message}");
+            }
         }
     }
 }

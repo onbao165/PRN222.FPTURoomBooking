@@ -69,9 +69,9 @@
             {
                 var account = result.Data;
                 // Only allow Manager role (1) to login
-                if (result.Data!.Role != AccountRole.Manager)
+                if (result.Data!.Role != AccountRole.Manager && result.Data.Role != AccountRole.Admin)
                 {
-                    _errorMessage = "Access denied. Only managers can log in to this system.";
+                    _errorMessage = "Access denied. Only managers and admins can log in to this system.";
                     return;
                 }
 

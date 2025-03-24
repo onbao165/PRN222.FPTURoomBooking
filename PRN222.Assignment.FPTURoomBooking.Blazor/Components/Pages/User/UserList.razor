@@ -1,0 +1,366 @@
+@page "/User"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using PRN222.Assignment.FPTURoomBooking.Repositories.Models
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Account
+@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.WebUtilities
+@attribute [Authorize(Roles = "Admin")]
+@inject IAccountService AccountService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<style>
+    .table-responsive {
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #2d3748;
+        color: white;
+        font-weight: 500;
+        border: none;
+    }
+
+    .table-striped tbody tr:nth-of-type(odd) {
+        background-color: rgba(0,0,0,.02);
+    }
+
+    .btn-outline-secondary {
+        border-color: #e2e8f0;
+    }
+
+    .btn-outline-secondary:hover {
+        background-color: #4a5568;
+        border-color: #4a5568;
+        color: white;
+    }
+
+    .form-control, .form-select {
+        border-color: #e2e8f0;
+        border-radius: 6px;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #4299e1;
+        box-shadow: 0 0 0 2px rgba(66,153,225,0.2);
+    }
+
+    .pagination {
+        margin-top: 1.5rem;
+        margin-bottom: 0;
+    }
+
+    .page-link {
+        color: #4a5568;
+        border-color: #e2e8f0;
+    }
+
+    .page-item.active .page-link {
+        background-color: #4a5568;
+        border-color: #4a5568;
+    }
+
+    .form-check-input:checked {
+        background-color: #4a5568;
+        border-color: #4a5568;
+    }
+</style>
+
+<PageTitle>User Management</PageTitle>
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3>User List</h3>
+            <button class="btn btn-primary" @onclick="CreateNew">Create New User</button>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="text" class="form-control" @bind="_searchTerm" @bind:event="oninput"
+                               placeholder="Search by email, username, or full name...">
+                        <button class="btn btn-outline-secondary" @onclick="Search">
+                            <i class="bi bi-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" @bind="_orderBy" @bind:event="onchange"
+                            @bind:after="HandleOrderByChange">
+                        <option value="email">Email</option>
+                        <option value="username">Username</option>
+                        <option value="fullName">Full Name</option>
+                        <option value="role">Role</option>
+                        <option value="createdAt">Created Date</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" @bind="_isDescending" @bind:event="onchange"
+                               @bind:after="HandleSortDirectionChange">
+                        <label class="form-check-label">Descending</label>
+                    </div>
+                </div>
+            </div>
+
+            @if (_loading)
+            {
+                        <div class="text-center">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+            }
+            else if (_users?.Items.Any() == true)
+            {
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Username</th>
+                                    <th>Full Name</th>
+                                    <th>Role</th>
+                                    <th>Department</th>
+                                    <th>Created At</th>
+                                    <th>Actions</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                @foreach (var user in _users.Items)
+                                {
+                                            <tr>
+                                                <td>@user.Email</td>
+                                                <td>@user.Username</td>
+                                                <td>@user.FullName</td>
+                                                <td>@user.Role</td>
+                                                <td>
+                                                    @if (user.Role == AccountRole.Manager)
+                                                    {
+                                                                @(user.Department?.Name ?? "No Department")
+                                                    }
+                                                </td>
+                                                <td>@user.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-info me-2" @onclick="() => ViewDetails(user.Id)">
+                                                        Details
+                                                    </button>
+                                                    @if (user.Id.ToString() != _currentUserId)
+                                                    {
+                                                                <button class="btn btn-sm btn-danger" @onclick="() => DeleteUser(user.Id)">
+                                                                    Delete
+                                                                </button>
+                                                    }
+                                                </td>
+                                            </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <nav>
+                            <ul class="pagination">
+                                @if (_users?.HasPreviousPage == true)
+                                {
+                                            <li class="page-item">
+                                                <button class="page-link" @onclick="() => LoadUsers(_pageNumber - 1)">Previous</button>
+                                            </li>
+                                }
+
+                                @for (var i = 1; i <= _users?.TotalPages; i++)
+                                {
+                                            var pageNumber = i;
+                                            <li class="page-item @(pageNumber == _pageNumber ? "active" : "")">
+                                                <button class="page-link" @onclick="() => LoadUsers(pageNumber)">@pageNumber</button>
+                                            </li>
+                                }
+
+                                @if (_users?.HasNextPage == true)
+                                {
+                                            <li class="page-item">
+                                                <button class="page-link" @onclick="() => LoadUsers(_pageNumber + 1)">Next</button>
+                                            </li>
+                                }
+                            </ul>
+                        </nav>
+            }
+            else
+            {
+                        <div class="alert alert-info">
+                            No users found.
+                        </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private Services.Utils.PaginationResult<AccountModel>? _users;
+    private bool _loading = true;
+    private string _searchTerm = "";
+    private string _orderBy = "email";
+    private bool _isDescending;
+    private int _pageNumber = 1;
+    private const int _pageSize = 10;
+    private string? _currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        _currentUserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        await LoadUsers(_pageNumber);
+    }
+
+    protected override void OnInitialized()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("searchTerm", out var searchTerm))
+        {
+            _searchTerm = searchTerm;
+        }
+        
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("orderBy", out var orderBy))
+        {
+            _orderBy = orderBy;
+        }
+        
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("isDescending", out var isDescending))
+        {
+            bool.TryParse(isDescending, out _isDescending);
+        }
+        
+        if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("pageNumber", out var pageNumber))
+        {
+            int.TryParse(pageNumber, out _pageNumber);
+        }
+    }
+
+    private void UpdateUrl()
+    {
+        var queryParameters = new Dictionary<string, object?>();
+
+        if (!string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            queryParameters.Add("searchTerm", _searchTerm);
+        }
+
+        if (_orderBy != "email")
+        {
+            queryParameters.Add("orderBy", _orderBy);
+        }
+
+        if (_isDescending)
+        {
+            queryParameters.Add("isDescending", _isDescending);
+        }
+
+        if (_pageNumber > 1)
+        {
+            queryParameters.Add("pageNumber", _pageNumber);
+        }
+
+        queryParameters.Add("pageSize", _pageSize);
+
+        var uri = NavigationManager.GetUriWithQueryParameters(queryParameters);
+        NavigationManager.NavigateTo(uri);
+    }
+
+    private async Task LoadUsers(int pageNumber)
+    {
+        try
+        {
+            _loading = true;
+            var result = await AccountService.GetPagedAsync(new GetAccountModel
+            {
+                PageNumber = pageNumber,
+                PageSize = _pageSize,
+                SearchTerm = _searchTerm,
+                OrderBy = _orderBy,
+                IsDescending = _isDescending
+            });
+
+            if (result.IsSuccess)
+            {
+                _users = result.Data;
+                _pageNumber = pageNumber;
+                UpdateUrl();
+            }
+            else
+            {
+                Console.WriteLine("Failed to load: " + result.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error: " + ex.Message);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task Search()
+    {
+        _pageNumber = 1;
+        await LoadUsers(1);
+    }
+
+    private async Task HandleOrderByChange()
+    {
+        _pageNumber = 1;
+        await LoadUsers(1);
+    }
+
+    private async Task HandleSortDirectionChange()
+    {
+        _pageNumber = 1;
+        await LoadUsers(1);
+    }
+
+    private void CreateNew()
+    {
+        NavigationManager.NavigateTo("/User/Create");
+    }
+
+    private void ViewDetails(Guid id)
+    {
+        NavigationManager.NavigateTo($"/User/{id}");
+    }
+
+    private async Task DeleteUser(Guid id)
+    {
+        if (id.ToString() == _currentUserId)
+        {
+            await JsRuntime.InvokeVoidAsync("alert", "You cannot delete your own account!");
+            return;
+        }
+
+        if (!await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this user?"))
+            return;
+
+        var result = await AccountService.DeleteAsync(id);
+        if (result.IsSuccess)
+        {
+            await LoadUsers(_pageNumber);
+        }
+        else
+        {
+            await JsRuntime.InvokeVoidAsync("alert", result.Error ?? "Failed to delete user");
+        }
+    }
+
+}

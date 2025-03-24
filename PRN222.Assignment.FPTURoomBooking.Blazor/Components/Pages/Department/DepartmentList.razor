@@ -1,0 +1,323 @@
+@page "/Department"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Department
+@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@using Microsoft.AspNetCore.WebUtilities
+@attribute [Authorize(Roles = "Admin")]
+@inject IDepartmentService DepartmentService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JsRuntime
+
+<style>
+    .table-responsive {
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #2d3748;
+        color: white;
+        font-weight: 500;
+        border: none;
+    }
+
+    .table-striped tbody tr:nth-of-type(odd) {
+        background-color: rgba(0, 0, 0, .02);
+    }
+
+    .btn-outline-secondary {
+        border-color: #e2e8f0;
+    }
+
+    .btn-outline-secondary:hover {
+        background-color: #4a5568;
+        border-color: #4a5568;
+        color: white;
+    }
+
+    .form-control, .form-select {
+        border-color: #e2e8f0;
+        border-radius: 6px;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #4299e1;
+        box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
+    }
+
+    .pagination {
+        margin-top: 1.5rem;
+        margin-bottom: 0;
+    }
+
+    .page-link {
+        color: #4a5568;
+        border-color: #e2e8f0;
+    }
+
+    .page-item.active .page-link {
+        background-color: #4a5568;
+        border-color: #4a5568;
+    }
+
+    .form-check-input:checked {
+        background-color: #4a5568;
+        border-color: #4a5568;
+    }
+</style>
+
+<PageTitle>Department Management</PageTitle>
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3>Department List</h3>
+            <button class="btn btn-primary" @onclick="CreateNew">Create New Department</button>
+        </div>
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="text" class="form-control" @bind="_searchTerm" @bind:event="oninput"
+                               placeholder="Search departments...">
+                        <button class="btn btn-outline-secondary" @onclick="Search">Search</button>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" @bind="_orderBy" @bind:event="onchange"
+                            @bind:after="HandleOrderByChange">
+                        <option value="name">Name</option>
+                        <option value="createdAt">Created Date</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" @bind="_isDescending" @bind:event="onchange"
+                               @bind:after="HandleSortDirectionChange">
+                        <label class="form-check-label">Descending</label>
+                    </div>
+                </div>
+            </div>
+
+            @if (_loading)
+            {
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (_departments?.Items.Any() == true)
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                        <tr>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th>Campus</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var department in _departments.Items)
+                        {
+                            <tr>
+                                <td>@department.Name</td>
+                                <td>@department.Description</td>
+                                <td>@department.Campus.Name</td>
+                                <td>@department.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info me-2"
+                                            @onclick="() => ViewDetails(department.Id)">
+                                        Details
+                                    </button>
+                                    <button class="btn btn-sm btn-danger"
+                                            @onclick="() => DeleteDepartment(department.Id)">
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+
+                <nav>
+                    <ul class="pagination">
+                        @if (_departments?.HasPreviousPage == true)
+                        {
+                            <li class="page-item">
+                                <button class="page-link" @onclick="() => LoadDepartments(_pageNumber - 1)">Previous
+                                </button>
+                            </li>
+                        }
+
+                        @for (var i = 1; i <= _departments?.TotalPages; i++)
+                        {
+                            var pageNumber = i;
+                            <li class="page-item @(pageNumber == _pageNumber ? "active" : "")">
+                                <button class="page-link"
+                                        @onclick="() => LoadDepartments(pageNumber)">@pageNumber</button>
+                            </li>
+                        }
+
+                        @if (_departments?.HasNextPage == true)
+                        {
+                            <li class="page-item">
+                                <button class="page-link" @onclick="() => LoadDepartments(_pageNumber + 1)">Next
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            }
+            else
+            {
+                <div class="alert alert-info">
+                    No departments found.
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private Services.Utils.PaginationResult<DepartmentModel>? _departments;
+    private bool _loading = true;
+    private string _searchTerm = "";
+    private string _orderBy = "name";
+    private bool _isDescending;
+    private int _pageNumber = 1;
+    private const int _pageSize = 10;
+
+    protected override void OnInitialized()
+    {
+        _pageNumber = 1;
+        _searchTerm = "";
+        _orderBy = "name";
+        _isDescending = false;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDepartments(_pageNumber);
+    }
+
+    private void UpdateUrl()
+    {
+        var queryParameters = new Dictionary<string, object?>();
+
+        if (!string.IsNullOrWhiteSpace(_searchTerm))
+        {
+            queryParameters.Add("searchTerm", _searchTerm);
+        }
+
+        if (_orderBy != "name")
+        {
+            queryParameters.Add("orderBy", _orderBy);
+        }
+
+        if (_isDescending)
+        {
+            queryParameters.Add("isDescending", _isDescending);
+        }
+
+        if (_pageNumber > 1)
+        {
+            queryParameters.Add("pageNumber", _pageNumber);
+        }
+
+        queryParameters.Add("pageSize", _pageSize);
+
+        var uri = NavigationManager.GetUriWithQueryParameters(queryParameters);
+        NavigationManager.NavigateTo(uri);
+    }
+
+    private async Task LoadDepartments(int pageNumber)
+    {
+        try
+        {
+            _loading = true;
+            var result = await DepartmentService.GetPagedAsync(new GetDepartmentModel
+            {
+                PageNumber = pageNumber,
+                PageSize = _pageSize,
+                SearchTerm = _searchTerm,
+                OrderBy = _orderBy,
+                IsDescending = _isDescending
+            });
+
+            if (result.IsSuccess)
+            {
+                _departments = result.Data;
+                _pageNumber = pageNumber;
+                UpdateUrl();
+            }
+            else
+            {
+                Console.WriteLine("Failed to load: " + result.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error: " + ex.Message);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task Search()
+    {
+        _pageNumber = 1;
+        await LoadDepartments(1);
+    }
+
+    private async Task HandleOrderByChange()
+    {
+        _pageNumber = 1;
+        await LoadDepartments(1);
+    }
+
+    private async Task HandleSortDirectionChange()
+    {
+        _pageNumber = 1;
+        await LoadDepartments(1);
+    }
+
+    private void CreateNew()
+    {
+        NavigationManager.NavigateTo("/Department/Create");
+    }
+
+    private void ViewDetails(Guid id)
+    {
+        NavigationManager.NavigateTo($"/Department/{id}");
+    }
+
+    private async Task DeleteDepartment(Guid id)
+    {
+        if (!await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this department?"))
+            return;
+
+        var result = await DepartmentService.DeleteAsync(id);
+        if (result.IsSuccess)
+        {
+            await LoadDepartments(_pageNumber);
+        }
+
+        else
+        {
+            await JsRuntime.InvokeVoidAsync("alert", result.Error ?? "Failed to delete department");
+        }
+    }
+
+}
