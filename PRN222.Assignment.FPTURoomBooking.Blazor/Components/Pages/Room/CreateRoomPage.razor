@@ -1,0 +1,105 @@
+﻿@page "/Room/Create"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Room
+@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@using System.Security.Claims
+@attribute [Authorize(Roles = "Manager")]
+@inject IRoomService RoomService
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager NavigationManager
+
+<PageTitle>Create Room</PageTitle>
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h3>Create New Room</h3>
+            <a href="/Room" class="btn btn-secondary">
+                <i class="fa fa-arrow-left"></i> Back to List
+            </a>
+        </div>
+        <div class="card-body">
+            <EditForm Model="@_roomModel" OnValidSubmit="@HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="mb-3">
+                    <label for="name" class="form-label">Room Name</label>
+                    <InputText id="name" @bind-Value="_roomModel.Name" class="form-control" />
+                    <ValidationMessage For="@(() => _roomModel.Name)" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <InputTextArea id="description" @bind-Value="_roomModel.Description" class="form-control" rows="3" />
+                    <ValidationMessage For="@(() => _roomModel.Description)" />
+                </div>
+
+                @if (_errorMessage != null)
+                {
+                    <div class="alert alert-danger">
+                        @_errorMessage
+                    </div>
+                }
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa fa-save"></i> Create Room
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private RoomModel _roomModel = new();
+    private string? _errorMessage;
+    private Guid _departmentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = HttpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            var departmentIdClaim = user.FindFirst("DepartmentId")?.Value;
+            if (Guid.TryParse(departmentIdClaim, out var deptId))
+            {
+                _departmentId = deptId;
+                _roomModel.DepartmentId = _departmentId;
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/Account/Login");
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/Account/Login");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            _errorMessage = null;
+            _roomModel.DepartmentId = _departmentId;
+
+            var result = await RoomService.CreateAsync(_roomModel);
+            if (result.IsSuccess)
+            {
+                NavigationManager.NavigateTo("/Room");
+            }
+            else
+            {
+                _errorMessage = result.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"An error occurred: {ex.Message}";
+        }
+    }
+}
