@@ -5,6 +5,7 @@ using PRN222.Assignment.FPTURoomBooking.Services.Models.Booking;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Department;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Room;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.RoomSlot;
+using PRN222.Assignment.FPTURoomBooking.Services.Models.Slot;
 
 namespace PRN222.Assignment.FPTURoomBooking.Services.Mappings;
 
@@ -36,6 +37,11 @@ public class MappingConfig
             .Ignore(dest => dest.UpdatedAt);
 
         TypeAdapterConfig<RoomSlotModel, RoomSlot>.NewConfig()
+            .Ignore(dest => dest.Room)
+            .Ignore(dest => dest.CreatedAt)
+            .Ignore(dest => dest.UpdatedAt);
+        
+        TypeAdapterConfig<SlotModel, Slot>.NewConfig()
             .Ignore(dest => dest.Room)
             .Ignore(dest => dest.CreatedAt)
             .Ignore(dest => dest.UpdatedAt);
