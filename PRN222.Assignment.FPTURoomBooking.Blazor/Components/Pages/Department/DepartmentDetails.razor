@@ -1,0 +1,415 @@
+@page "/Department/Create"
+@page "/Department/{Id:guid}"
+@using Mapster
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Campus
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Department
+@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Account
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Admin")]
+@inject IDepartmentService DepartmentService
+@inject ICampusService CampusService
+@inject NavigationManager NavigationManager
+@inject HubConnection HubConnection
+@inject IAccountService AccountService
+
+<style>
+    .department-details-card {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border: none;
+        border-radius: 8px;
+    }
+
+    .department-details-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+        padding: 1.5rem;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .department-details-title {
+        color: #2c3e50;
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .back-button {
+        padding: 0.5rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .back-button:hover {
+        background-color: #4a5568;
+        transform: translateY(-1px);
+    }
+
+    .form-label {
+        color: #2d3748;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control, .form-select {
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        padding: 0.625rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #3182ce;
+        box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+    }
+
+    .details-view {
+        background-color: #fff;
+        padding: 2rem;
+        border-radius: 8px;
+    }
+
+    .details-label {
+        color: #4a5568;
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }
+
+    .details-value {
+        color: #2d3748;
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+        padding: 0.5rem;
+        background-color: #f7fafc;
+        border-radius: 6px;
+        border: 1px solid #edf2f7;
+    }
+
+    .alert {
+        border-radius: 8px;
+        border: none;
+    }
+
+    .alert-danger {
+        background-color: #fff5f5;
+        color: #c53030;
+        border-left: 4px solid #fc8181;
+    }
+
+    .spinner-border {
+        color: #3182ce;
+    }
+
+    .list-section {
+        margin-top: 2rem;
+        padding: 1rem;
+        background-color: #f8fafc;
+        border-radius: 8px;
+    }
+
+    .list-title {
+        color: #2d3748;
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .list-table {
+        background-color: white;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+</style>
+
+<PageTitle>@(IsNew ? "Create Department" : "Department Details")</PageTitle>
+
+<div class="container mt-4">
+    <div class="card department-details-card">
+        <div class="card-header department-details-header d-flex justify-content-between align-items-center">
+            <h3 class="department-details-title">@(IsNew ? "Create Department" : "Department Details")</h3>
+            <button class="btn btn-secondary back-button" @onclick="GoBack">Back to List</button>
+        </div>
+        <div class="card-body p-4">
+            @if (_loading)
+            {
+                <div class="text-center p-5">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            @_errorMessage
+                        </div>
+                        <button type="button" class="btn-close" @onclick="() => _errorMessage = null"
+                                aria-label="Close"></button>
+                    </div>
+                }
+
+                @if (IsNew)
+                {
+                    <EditForm Model="@_initDepartment" OnValidSubmit="HandleSubmit">
+                        <DataAnnotationsValidator/>
+                        <ValidationSummary/>
+
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <InputText @bind-Value="_initDepartment.Name" class="form-control"/>
+                            <ValidationMessage For="@(() => _initDepartment.Name)"/>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <InputTextArea @bind-Value="_initDepartment.Description" class="form-control" rows="3"/>
+                            <ValidationMessage For="@(() => _initDepartment.Description)"/>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Campus</label>
+                            <InputSelect @bind-Value="_initDepartment.CampusId" class="form-select">
+                                <option value="">Select Campus</option>
+                                @foreach (var campus in _campuses)
+                                {
+                                    <option value="@campus.Id">@campus.Name</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => _initDepartment.CampusId)"/>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Create</button>
+                    </EditForm>
+                }
+                else
+                {
+                    <div class="details-view">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-4">
+                                    <div class="details-label">Name</div>
+                                    <div class="details-value">@_initDepartment.Name</div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <div class="details-label">Description</div>
+                                    <div class="details-value">@_initDepartment.Description</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-4">
+                                    <div class="details-label">Campus</div>
+                                    <div class="details-value">
+                                        @(_campuses.FirstOrDefault(c => c.Id == _initDepartment.CampusId)?.Name ?? "No Campus")
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="list-section">
+                            <h4 class="list-title">Department Managers</h4>
+                            @if (_managers == null)
+                            {
+                                <div class="text-center">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            }
+                            else if (!_managers.Any())
+                            {
+                                <div class="alert alert-info">No managers assigned to this department.</div>
+                            }
+                            else
+                            {
+                                <div class="table-responsive list-table">
+                                    <table class="table table-hover mb-0">
+                                        <thead>
+                                        <tr>
+                                            <th>Full Name</th>
+                                            <th>Email</th>
+                                            <th>Username</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        @foreach (var manager in _managers)
+                                        {
+                                            <tr>
+                                                <td>@manager.FullName</td>
+                                                <td>@manager.Email</td>
+                                                <td>@manager.Username</td>
+                                            </tr>
+                                        }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private List<CampusModel> _campuses = [];
+    private string? _errorMessage;
+    private List<AccountModel>? _managers;
+
+    private InitDepartmentModel _initDepartment = new()
+    {
+        Name = "",
+        Description = "",
+        CampusId = Guid.Empty
+    };
+
+    private bool _loading = true;
+    private bool IsNew => Id == null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCampuses();
+        if (!IsNew)
+        {
+            await LoadDepartment();
+        }
+        else
+        {
+            _loading = false;
+        }
+        
+        await InitializeSignalR();
+    }
+
+    private async Task LoadCampuses()
+    {
+        try
+        {
+            var result = await CampusService.GetPagedAsync(new GetCampusModel { PageSize = 100 });
+            if (result.IsSuccess)
+            {
+                _campuses = result.Data?.Items.ToList() ?? [];
+            }
+            else
+            {
+                _errorMessage = "Failed to load campuses";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error loading campuses: {ex.Message}";
+        }
+    }
+
+    private async Task LoadDepartment()
+    {
+        try
+        {
+            _loading = true;
+            _errorMessage = null;
+            var result = await DepartmentService.GetAsync(Id!.Value);
+            if (result.IsSuccess)
+            {
+                _initDepartment = result.Data.Adapt<InitDepartmentModel>();
+                await LoadManagers();
+            }
+            else
+            {
+                _errorMessage = result.Error;
+                NavigationManager.NavigateTo("/Department");
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadManagers()
+    {
+        try
+        {
+            var result = await AccountService.GetManagersAsync(Id!.Value);
+
+            if (result.IsSuccess)
+            {
+                _managers = result.Data?.ToList();
+            }
+            else
+            {
+                _errorMessage = "Failed to load department managers";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error loading managers: {ex.Message}";
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        _errorMessage = null;
+        if (_initDepartment.CampusId == Guid.Empty)
+        {
+            _errorMessage = "Campus is required";
+            StateHasChanged();
+            return;
+        }
+
+        var model = _initDepartment.Adapt<DepartmentModel>();
+        var result = await DepartmentService.CreateAsync(model);
+
+        if (result.IsSuccess)
+        {
+            NavigationManager.NavigateTo("/Department");
+            await HubConnection.SendAsync("SendDepartmentUpdate");
+        }
+        else
+        {
+            _errorMessage = result.Error;
+            StateHasChanged();
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/Department");
+    }
+
+    private async Task InitializeSignalR()
+    {
+        if (HubConnection.State == HubConnectionState.Disconnected)
+        {
+            try
+            {
+                await HubConnection.StartAsync();
+                Console.WriteLine("Connected to SignalR hub");
+                
+                HubConnection.On("ReceiveDepartmentUpdate", async () =>
+                {
+                    await InvokeAsync(async () =>
+                    {
+                        await LoadDepartment();
+                        StateHasChanged();
+                    });
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error with SignalR: {ex.Message}");
+            }
+        }
+    }
+
+}

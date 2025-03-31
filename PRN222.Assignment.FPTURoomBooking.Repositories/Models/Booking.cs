@@ -11,7 +11,7 @@ public class Booking : AuditableEntity
     [ForeignKey(nameof(Account))] public Guid AccountId { get; set; } // Booking belongs to an account
     public Guid? ManagerId { get; set; } // Booking is approved by an account
     public virtual Account Account { get; set; } = null!;
-    public virtual ICollection<RoomSlot> RoomSlots { get; set; } = [];
+    public virtual ICollection<Slot> Slots { get; set; } = [];
 
     public static Expression<Func<Booking, object>> GetSortValue(string orderBy)
     {

@@ -1,0 +1,279 @@
+﻿@page "/Room/Create"
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Room
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Department
+@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@using Microsoft.AspNetCore.SignalR.Client
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Campus
+@rendermode InteractiveServer
+@attribute [Authorize(Roles = "Manager,Admin")]
+@inject IRoomService RoomService
+@inject IDepartmentService DepartmentService
+@inject IHttpContextAccessor HttpContextAccessor
+@inject HubConnection HubConnection
+@inject NavigationManager NavigationManager
+@inject ICampusService CampusService
+
+<style>
+    .room-details-card {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border: none;
+        border-radius: 8px;
+    }
+
+    .room-details-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+        padding: 1.5rem;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .room-details-title {
+        color: #2c3e50;
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .back-button {
+        padding: 0.5rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .back-button:hover {
+        background-color: #4a5568;
+        transform: translateY(-1px);
+    }
+
+    .form-label {
+        color: #2d3748;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control {
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
+        padding: 0.625rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        border-color: #3182ce;
+        box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+    }
+
+    .validation-message {
+        font-size: 0.875rem;
+        color: #e53e3e;
+        margin-top: 0.25rem;
+    }
+
+    .alert {
+        border-radius: 8px;
+        border: none;
+    }
+
+    .alert-danger {
+        background-color: #fff5f5;
+        color: #c53030;
+        border-left: 4px solid #fc8181;
+    }
+
+    .spinner-border {
+        color: #3182ce;
+    }
+
+    .form-select {
+        border-color: #e2e8f0;
+        border-radius: 6px;
+        padding: 0.625rem;
+    }
+
+    .form-select:focus {
+        border-color: #3182ce;
+        box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+    }
+</style>
+
+<PageTitle>Create Room</PageTitle>
+
+<div class="container mt-4">
+    <div class="card room-details-card">
+        <div class="card-header room-details-header d-flex justify-content-between align-items-center">
+            <h3 class="room-details-title">@("Create Room")</h3>
+            <a href="/Room" class="btn btn-secondary back-button">
+                <i class="fa fa-arrow-left"></i> Back to List
+            </a>
+        </div>
+        <div class="card-body">
+            @if (_loading)
+            {
+                                <div class="text-center">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+            }
+            else
+            {
+                                <EditForm Model="@_roomModel" OnValidSubmit="@HandleValidSubmit">
+                                    <DataAnnotationsValidator/>
+                                    <ValidationSummary/>
+
+                                    <div class="mb-3">
+                                        <label for="name" class="form-label">Room Name</label>
+                                        <InputText id="name" @bind-Value="_roomModel.Name" class="form-control"/>
+                                        <ValidationMessage For="@(() => _roomModel.Name)"/>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label for="description" class="form-label">Description</label>
+                                        <InputTextArea id="description" @bind-Value="_roomModel.Description" class="form-control"
+                                                       rows="3"/>
+                                        <ValidationMessage For="@(() => _roomModel.Description)"/>
+                                    </div>
+
+                                    @if (_isAdmin)
+                                    {
+                                                        <div class="mb-3">
+                                                            <label for="campus" class="form-label">Campus</label>
+                                                            <InputSelect id="campus" @bind-Value="_roomModel.CampusId" class="form-select">
+                                                                <option value="">Select Campus</option>
+                                                                @foreach (var campus in _campuses)
+                                                                {
+                                                                                    <option value="@campus.Id">@campus.Name</option>
+                                                                }
+                                                            </InputSelect>
+                                                            <ValidationMessage For="@(() => _roomModel.CampusId)"/>
+                                                        </div>
+                                    }
+
+                                    @if (_errorMessage != null)
+                                    {
+                                                        <div class="alert alert-danger">
+                                                            @_errorMessage
+                                                        </div>
+                                    }
+
+                                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                        <button type="submit" class="btn btn-primary" disabled="@_loading">
+                                            @if (_loading)
+                                            {
+                                                                <span class="spinner-border spinner-border-sm me-1" role="status"
+                                                                      aria-hidden="true"></span>
+                                            }
+                                            <i class="fa fa-save"></i> Create Room
+                                        </button>
+                                    </div>
+                                </EditForm>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly RoomModel _roomModel = new();
+    private List<CampusModel> _campuses = [];
+    private string? _errorMessage;
+    private bool _loading;
+    private bool _isAdmin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = HttpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated != true)
+        {
+            NavigationManager.NavigateTo("/Account/Login");
+            return;
+        }
+
+        _isAdmin = user.IsInRole("Admin");
+
+        if (_isAdmin)
+        {
+            await LoadCampuses();
+        }
+
+        // Setup SignalR connection
+        if (HubConnection.State == HubConnectionState.Disconnected)
+        {
+            try
+            {
+                await HubConnection.StartAsync();
+                Console.WriteLine("Connected to SignalR hub");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error connecting to SignalR: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task LoadCampuses()
+    {
+        try
+        {
+            _loading = true;
+            var result = await CampusService.GetPagedAsync(new GetCampusModel { PageSize = 100 });
+
+            if (result is { IsSuccess: true, Data: not null })
+            {
+                _campuses = result.Data.Items.ToList();
+            }
+            else
+            {
+                _errorMessage = "Failed to load campuses";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error loading campuses: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            _loading = true;
+            _errorMessage = null;
+
+            if (_isAdmin && _roomModel.CampusId == Guid.Empty)
+            {
+                _errorMessage = "Please select a campus";
+                return;
+            }
+
+            var result = await RoomService.CreateAsync(_roomModel);
+            if (result.IsSuccess)
+            {
+                // Notify other users about the new room
+                if (HubConnection.State == HubConnectionState.Connected)
+                {
+                    await HubConnection.SendAsync("SendRoomUpdate");
+                }
+
+                NavigationManager.NavigateTo("/Room");
+            }
+            else
+            {
+                _errorMessage = result.Error;
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+}

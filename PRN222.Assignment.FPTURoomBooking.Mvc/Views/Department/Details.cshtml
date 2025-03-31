@@ -1,0 +1,66 @@
+@model PRN222.Assignment.FPTURoomBooking.Mvc.Models.DepartmentViewModel
+@{
+    ViewData["Title"] = "Department Details";
+}
+
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">Home</a></li>
+                    <li class="breadcrumb-item"><a asp-controller="Department" asp-action="Index">Departments</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">@Model.Name</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Department Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <strong>Name</strong>
+                        </div>
+                        <div class="col-md-8">
+                            @Model.Name
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <strong>Description</strong>
+                        </div>
+                        <div class="col-md-8">
+                            @Model.Description
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <strong>Campus</strong>
+                        </div>
+                        <div class="col-md-8">
+                            <a asp-controller="Campus" asp-action="Details" asp-route-id="@Model.CampusId">
+                                @Model.CampusName
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                    <a asp-controller="Campus" asp-action="Details" asp-route-id="@Model.CampusId" class="btn btn-info">
+                        <i class="fas fa-building"></i> View Campus
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> 

@@ -1,6 +1,8 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@inject IHttpContextAccessor HttpContextAccessor
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">PRN222.Assignment.FPTURoomBooking.Blazor</a>
+        <a class="navbar-brand" href="">FPTURoomBooking</a>
     </div>
 </div>
 
@@ -14,16 +16,45 @@
             </NavLink>
         </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
+        @if (IsManager)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/Booking">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span> Bookings
+                </NavLink>
+            </div>
+        }
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
+        @if (IsAdmin)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/Campus">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span> Campuses
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/Department">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span> Departments
+                </NavLink>
+            </div>
+            
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/Room">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span> Rooms
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/User">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span> Users
+                </NavLink>
+            </div>
+        }
     </nav>
 </div>
+
+@code {
+    private bool IsAdmin => HttpContextAccessor.HttpContext?.User.IsInRole("Admin") ?? false;
+    private bool IsManager => HttpContextAccessor.HttpContext?.User.IsInRole("Manager") ?? false;
+}

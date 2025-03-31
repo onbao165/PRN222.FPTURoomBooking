@@ -4,6 +4,19 @@
         <TargetFramework>net8.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <UserSecretsId>3a87d5f3-c8d0-4719-9e68-bc65ee18e5c4</UserSecretsId>
     </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\PRN222.Assignment.FPTURoomBooking.Services\PRN222.Assignment.FPTURoomBooking.Services.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="wwwroot\js\" />
+    </ItemGroup>
 
 </Project>

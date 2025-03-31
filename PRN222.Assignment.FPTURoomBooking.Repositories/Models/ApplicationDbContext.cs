@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore;
+using PRN222.Assignment.FPTURoomBooking.Repositories.Models.Base;
 
 namespace PRN222.Assignment.FPTURoomBooking.Repositories.Models;
 
@@ -13,14 +15,29 @@ public class ApplicationDbContext : DbContext
     public DbSet<Campus> Campuses { get; set; } = null!;
     public DbSet<Department> Departments { get; set; } = null!;
     public DbSet<Room> Rooms { get; set; } = null!;
-    public DbSet<RoomSlot> RoomSlots { get; set; } = null!;
+    public DbSet<Slot> Slots { get; set; } = null!;
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
     }
+    
+    private static void SoftDeleteFilter(ModelBuilder modelBuilder)
+    {
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (!typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType)) continue;
+            var parameter = Expression.Parameter(entityType.ClrType, "p");
+            var property = Expression.Property(parameter, nameof(ISoftDeletable.IsDeleted));
+            var condition = Expression.Equal(property, Expression.Constant(false));
+            var lambda = Expression.Lambda(condition, parameter);
+
+            modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        SoftDeleteFilter(modelBuilder);
         modelBuilder.Entity<Account>(entity =>
         {
             entity.ToTable(nameof(Account));
@@ -40,13 +57,9 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Campus>(entity => { entity.ToTable(nameof(Campus)); });
         modelBuilder.Entity<Department>(entity => { entity.ToTable(nameof(Department)); });
         modelBuilder.Entity<Room>(entity => { entity.ToTable(nameof(Room)); });
-        modelBuilder.Entity<RoomSlot>(entity =>
+        modelBuilder.Entity<Slot>(entity =>
         {
-            entity.ToTable(nameof(RoomSlot));
-            entity.Property(p => p.TimeSlot)
-                .HasConversion(
-                    v => v.ToString(),
-                    v => (TimeSlot)Enum.Parse(typeof(TimeSlot), v));
+            entity.ToTable(nameof(Slot));
         });
     }
 }

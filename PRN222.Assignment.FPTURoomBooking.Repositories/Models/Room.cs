@@ -9,9 +9,9 @@ public class Room : AuditableEntity
 {
     [MaxLength(255)] public string Name { get; set; } = null!;
     [MaxLength(2000)] public string? Description { get; set; }
-    [ForeignKey(nameof(Department))] public Guid DepartmentId { get; set; } // Room belongs to a department
-    public virtual Department Department { get; set; } = null!;
-    public virtual ICollection<RoomSlot> RoomSlots { get; set; } = [];
+    [ForeignKey(nameof(Campus))] public Guid CampusId { get; set; } // Room belongs to a campus
+    public virtual Campus Campus { get; set; } = null!;
+    public virtual ICollection<Slot> Slots { get; set; } = [];
 
     public static Expression<Func<Room, object>> GetSortValue(string orderBy)
     {

@@ -12,8 +12,6 @@ public class Department : AuditableEntity
     [ForeignKey(nameof(Campus))] public Guid CampusId { get; set; } // Department belongs to a campus
     public virtual Campus Campus { get; set; } = null!;
     public virtual ICollection<Account> Accounts { get; set; } = []; // Department has many managers
-    public virtual ICollection<Room> Rooms { get; set; } = [];
-
     public static Expression<Func<Department, object>> GetSortValue(string orderBy)
     {
         return orderBy switch

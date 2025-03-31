@@ -3,16 +3,17 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>@ViewData["Title"] - PRN222.Assignment.FPTURoomBooking.Mvc</title>
+    <title>@ViewData["Title"] - FPTU Room Booking</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css"/>
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true"/>
     <link rel="stylesheet" href="~/PRN222.Assignment.FPTURoomBooking.Mvc.styles.css" asp-append-version="true"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
 </head>
 <body>
 <header>
     <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
         <div class="container-fluid">
-            <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">PRN222.Assignment.FPTURoomBooking.Mvc</a>
+            <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">FPTU Room Booking</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                     aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
@@ -22,9 +23,42 @@
                     <li class="nav-item">
                         <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                    </li>
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Campus" asp-action="Index">Campuses</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Department" asp-action="Index">Departments</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Room" asp-action="Index">Rooms</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Booking" asp-action="Index">Bookings</a>
+                        </li>
+                    }
+                </ul>
+                <ul class="navbar-nav">
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="Profile" asp-action="Index">
+                                <i class="fas fa-user-circle"></i> My Profile
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <form asp-controller="Account" asp-action="Logout" method="post">
+                                <button type="submit" class="btn btn-link nav-link text-dark">Logout</button>
+                            </form>
+                        </li>
+                    }
+                    else
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-controller="Account" asp-action="Login">Login</a>
+                        </li>
+                    }
                 </ul>
             </div>
         </div>
@@ -38,12 +72,19 @@
 
 <footer class="border-top footer text-muted">
     <div class="container">
-        &copy; 2025 - PRN222.Assignment.FPTURoomBooking.Mvc - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+        &copy; @DateTime.Now.Year - FPTU Room Booking - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
     </div>
 </footer>
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="~/lib/microsoft/signalr/dist/browser/signalr.min.js"></script>
 <script src="~/js/site.js" asp-append-version="true"></script>
+<script>
+    // Initialize SignalR when document is ready
+    $(document).ready(function() {
+        initializeSignalR();
+    });
+</script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

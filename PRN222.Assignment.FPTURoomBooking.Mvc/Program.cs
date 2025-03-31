@@ -1,4 +1,5 @@
 using PRN222.Assignment.FPTURoomBooking.Mvc;
+using Microsoft.AspNetCore.Cors;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +8,19 @@ builder.Services.AddControllersWithViews();
 builder.ConfigureDatabase();
 builder.ConfigureServices();
 builder.ConfigureCookieAuthentication();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowBlazorApp",
+        builder =>
+        {
+            builder
+                .WithOrigins("https://localhost:7000") // Your Blazor app URL
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials(); // Important for SignalR
+        });
+});
 
 var app = builder.Build();
 
@@ -23,7 +37,11 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.UseCors("AllowBlazorApp");
+
 app.UseAuthorization();
+
+app.ConfigureChatHub();
 
 app.MapControllerRoute(
     name: "default",

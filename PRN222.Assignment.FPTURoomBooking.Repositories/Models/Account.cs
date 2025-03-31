@@ -32,5 +32,6 @@ public class Account : AuditableEntity
 public enum AccountRole
 {
     Manager = 1,
-    User = 2
+    User = 2,
+    Admin = 3
 }

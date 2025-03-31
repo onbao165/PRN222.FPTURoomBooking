@@ -1,4 +1,9 @@
-﻿@inherits LayoutComponentBase
+﻿@using System.Security.Claims
+@using Microsoft.AspNetCore.SignalR.Client
+@inherits LayoutComponentBase
+@implements IAsyncDisposable
+@inject HubConnection HubConnection
+@inject IHttpContextAccessor HttpContextAccessor
 
 <div class="page">
     <div class="sidebar">
@@ -6,9 +11,7 @@
     </div>
 
     <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
+        <MainHeader />
 
         <article class="content px-4">
             @Body
@@ -21,3 +24,43 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    private Guid _currentUserDepartmentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = HttpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            var departmentId = user.FindFirstValue("DepartmentId");
+            if (!string.IsNullOrEmpty(departmentId) && Guid.TryParse(departmentId, out var departmentGuid))
+            {
+                _currentUserDepartmentId = departmentGuid;
+            }
+        }
+
+        if (HubConnection.State == HubConnectionState.Disconnected)
+        {
+            try
+            {
+                await HubConnection.StartAsync();
+                Console.WriteLine("Connected to SignalR hub");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error connecting to SignalR: {ex.Message}");
+            }
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        if (HubConnection.State == HubConnectionState.Connected && _currentUserDepartmentId != Guid.Empty)
+        {
+            await HubConnection.SendAsync("LeaveDepartmentGroup", _currentUserDepartmentId);
+        }
+    }
+}

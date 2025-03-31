@@ -186,14 +186,14 @@ namespace PRN222.Assignment.FPTURoomBooking.Repositories.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid>("CampusId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<Guid>("DepartmentId")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
@@ -212,12 +212,12 @@ namespace PRN222.Assignment.FPTURoomBooking.Repositories.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DepartmentId");
+                    b.HasIndex("CampusId");
 
                     b.ToTable("Room", (string)null);
                 });
 
-            modelBuilder.Entity("PRN222.Assignment.FPTURoomBooking.Repositories.Models.RoomSlot", b =>
+            modelBuilder.Entity("PRN222.Assignment.FPTURoomBooking.Repositories.Models.Slot", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -232,15 +232,17 @@ namespace PRN222.Assignment.FPTURoomBooking.Repositories.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime>("EndTime")
+                        .HasColumnType("datetime2");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<Guid>("RoomId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("TimeSlot")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -251,7 +253,7 @@ namespace PRN222.Assignment.FPTURoomBooking.Repositories.Migrations
 
                     b.HasIndex("RoomId");
 
-                    b.ToTable("RoomSlot", (string)null);
+                    b.ToTable("Slot", (string)null);
                 });
 
             modelBuilder.Entity("PRN222.Assignment.FPTURoomBooking.Repositories.Models.Account", b =>
@@ -287,25 +289,25 @@ namespace PRN222.Assignment.FPTURoomBooking.Repositories.Migrations
 
             modelBuilder.Entity("PRN222.Assignment.FPTURoomBooking.Repositories.Models.Room", b =>
                 {
-                    b.HasOne("PRN222.Assignment.FPTURoomBooking.Repositories.Models.Department", "Department")
+                    b.HasOne("PRN222.Assignment.FPTURoomBooking.Repositories.Models.Campus", "Campus")
                         .WithMany("Rooms")
-                        .HasForeignKey("DepartmentId")
+                        .HasForeignKey("CampusId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Department");
+                    b.Navigation("Campus");
                 });
 
-            modelBuilder.Entity("PRN222.Assignment.FPTURoomBooking.Repositories.Models.RoomSlot", b =>
+            modelBuilder.Entity("PRN222.Assignment.FPTURoomBooking.Repositories.Models.Slot", b =>
                 {
                     b.HasOne("PRN222.Assignment.FPTURoomBooking.Repositories.Models.Booking", "Booking")
-                        .WithMany("RoomSlots")
+                        .WithMany("Slots")
                         .HasForeignKey("BookingId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("PRN222.Assignment.FPTURoomBooking.Repositories.Models.Room", "Room")
-                        .WithMany("RoomSlots")
+                        .WithMany("Slots")
                         .HasForeignKey("RoomId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -322,24 +324,24 @@ namespace PRN222.Assignment.FPTURoomBooking.Repositories.Migrations
 
             modelBuilder.Entity("PRN222.Assignment.FPTURoomBooking.Repositories.Models.Booking", b =>
                 {
-                    b.Navigation("RoomSlots");
+                    b.Navigation("Slots");
                 });
 
             modelBuilder.Entity("PRN222.Assignment.FPTURoomBooking.Repositories.Models.Campus", b =>
                 {
                     b.Navigation("Departments");
+
+                    b.Navigation("Rooms");
                 });
 
             modelBuilder.Entity("PRN222.Assignment.FPTURoomBooking.Repositories.Models.Department", b =>
                 {
                     b.Navigation("Accounts");
-
-                    b.Navigation("Rooms");
                 });
 
             modelBuilder.Entity("PRN222.Assignment.FPTURoomBooking.Repositories.Models.Room", b =>
                 {
-                    b.Navigation("RoomSlots");
+                    b.Navigation("Slots");
                 });
 #pragma warning restore 612, 618
         }

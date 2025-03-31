@@ -13,4 +13,6 @@ public class AccountModel
     public AccountRole Role { get; set; }
     public Guid? DepartmentId { get; set; } // Manager belongs to a department
     public DepartmentModel? Department { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 }

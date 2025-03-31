@@ -1,0 +1,367 @@
+@page "/Booking"
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
+@using PRN222.Assignment.FPTURoomBooking.Blazor.Components.Shared
+@using PRN222.Assignment.FPTURoomBooking.Repositories.Models
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Booking
+@using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@using PRN222.Assignment.FPTURoomBooking.Services.Utils
+@rendermode InteractiveServer
+@inject NavigationManager NavigationManager
+@inject IBookingService BookingService
+@inject IAccountService AccountService
+@inject IHttpContextAccessor HttpContextAccessor
+@inject HubConnection HubConnection
+@attribute [Authorize]
+
+<PageTitle>Booking List</PageTitle>
+
+<div class="container-fluid">
+    <h3 class="mb-4">Booking Management</h3>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h5 class="mb-0">Filters</h5>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" @bind="_getModel.Status">
+                        <option value="">All Status</option>
+                        @foreach (var status in Enum.GetValues<BookingStatus>())
+                        {
+                            <option value="@status">@status</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" class="form-control" @bind="_getModel.StartDate"/>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">End Date</label>
+                    <input type="date" class="form-control" @bind="_getModel.EndDate"/>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" @bind="_getModel.SearchTerm" placeholder="Search..."/>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col">
+                    <button class="btn btn-primary" @onclick="ApplyFilters">Apply Filters</button>
+                    <button class="btn btn-secondary" @onclick="ResetFilters">Reset</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Booking List</h5>
+        </div>
+        <div class="card-body">
+            @if (_loading)
+            {
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (_bookings?.Items.Any() != true)
+            {
+                <div class="alert alert-info">No bookings found.</div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Booking Date</th>
+                            <th>Booked By</th>
+                            <th>Status</th>
+                            <th>Created At</th>
+                            <th>Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var booking in _bookings.Items)
+                        {
+                            <tr>
+                                <td>@booking.Id.ToString().Substring(0, 8)...</td>
+                                <td>@booking.BookingDate.ToString("dd-MM-yyyy")</td>
+                                <td>@booking.Account.FullName</td>
+                                <td>
+                                        <span class="badge @GetStatusBadgeClass(booking.Status)">
+                                            @booking.Status
+                                        </span>
+                                </td>
+                                <td>@booking.CreatedAt.ToString("dd-MM-yyyy HH:mm")</td>
+                                <td>
+                                    <a href="/Booking/Details/@booking.Id" class="btn btn-sm btn-info">
+                                        Details
+                                    </a>
+                                    @if (booking.Status == BookingStatus.Pending)
+                                    {
+                                        <button class="btn btn-sm btn-danger"
+                                                @onclick="@(_ => HandleRejectBooking(booking.Id))">
+                                            Reject
+                                        </button>
+                                        <button class="btn btn-sm btn-success"
+                                                @onclick="@(_ => HandleApproveBooking(booking.Id))">
+                                            Approve
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+
+                <Pagination CurrentPage="@_getModel.PageNumber"
+                            TotalPages="@((_bookings.TotalItems + _getModel.PageSize - 1) / _getModel.PageSize)"
+                            OnPageChanged="HandlePageChanged"/>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool _loading = true;
+    private PaginationResult<BookingModel>? _bookings;
+    private Guid _currentUserDepartmentId;
+
+    private GetBookingModel _getModel = new()
+    {
+        PageSize = 10,
+        PageNumber = 1,
+        OrderBy = "bookingDate",
+        IsDescending = true
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = HttpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
+            {
+                var accountResult = await AccountService.GetAsync(userGuid);
+                if (accountResult is { IsSuccess: true, Data: not null })
+                {
+                    if (accountResult.Data.DepartmentId.HasValue)
+                    {
+                        _currentUserDepartmentId = accountResult.Data.DepartmentId.Value;
+                        // Set department filter in the get model
+                        _getModel.DepartmentId = _currentUserDepartmentId;
+                    }
+                    else
+                    {
+                        // If manager has no department, they shouldn't see any bookings
+                        NavigationManager.NavigateTo("/");
+                        return;
+                    }
+                }
+            }
+        }
+
+        if (HubConnection.State == HubConnectionState.Disconnected)
+        {
+            try
+            {
+                await HubConnection.StartAsync();
+                Console.WriteLine("Connected to SignalR hub");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error connecting to SignalR: {ex.Message}");
+            }
+        }
+
+        if (HubConnection.State == HubConnectionState.Connected)
+        {
+            try
+            {
+                // Join the department group
+                if (_currentUserDepartmentId != Guid.Empty)
+                {
+                    await HubConnection.SendAsync("JoinDepartmentGroup", _currentUserDepartmentId);
+                }
+
+                HubConnection.On("ReceiveBookingStatusUpdate", async () =>
+                {
+                    Console.WriteLine("Received booking status update");
+                    if (NavigationManager.Uri.Contains("/Booking"))
+                    {
+                        await InvokeAsync(async () =>
+                        {
+                            await LoadBookings(); 
+                            StateHasChanged();
+                        });
+                    }
+                });
+
+                HubConnection.On("ReceiveNewBooking", async () =>
+                {
+                    Console.WriteLine("Received new booking");
+                    if (NavigationManager.Uri.Contains("/Booking"))
+                    {
+                        await InvokeAsync(async () =>
+                        {
+                            await LoadBookings();
+                            StateHasChanged();
+                        });
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error joining department group: {ex.Message}");
+            }
+        }
+
+        await LoadBookings();
+    }
+
+    private async Task LoadBookings()
+    {
+        try
+        {
+            _loading = true;
+            var result = await BookingService.GetPagedAsync(_getModel);
+            if (result.IsSuccess)
+            {
+                _bookings = result.Data;
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task HandlePageChanged(int page)
+    {
+        _getModel.PageNumber = page;
+        await LoadBookings();
+    }
+
+    private async Task ApplyFilters()
+    {
+        _getModel.PageNumber = 1;
+        await LoadBookings();
+    }
+
+    private async Task ResetFilters()
+    {
+        _getModel = new GetBookingModel
+        {
+            PageSize = 10,
+            PageNumber = 1,
+            OrderBy = "bookingDate",
+            IsDescending = true,
+            DepartmentId = _currentUserDepartmentId
+        };
+        await LoadBookings();
+    }
+
+    private string GetStatusBadgeClass(BookingStatus status) => status switch
+    {
+        BookingStatus.Pending => "bg-warning text-dark",
+        BookingStatus.Approved => "bg-success",
+        BookingStatus.Rejected => "bg-danger",
+        BookingStatus.Cancelled => "bg-secondary",
+        _ => "bg-primary"
+    };
+
+    private async Task HandleApproveBooking(Guid bookingId)
+    {
+        //Get Manager Id
+        var managerId = Guid.Empty;
+        var user = HttpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
+            {
+                managerId = userGuid;
+                
+                // Verify manager's department matches the booking's department
+                var booking = await BookingService.GetAsync(bookingId);
+                if (booking.Data?.Account.DepartmentId != _currentUserDepartmentId)
+                {
+                    return; // Not authorized to approve this booking
+                }
+            }
+        }
+
+        if (managerId == Guid.Empty)
+        {
+            return;
+        }
+
+        var result = await BookingService.UpdateStatusAsync(bookingId, managerId, BookingStatus.Approved);
+        if (result.IsSuccess)
+        {
+            await LoadBookings();
+            var booking = await BookingService.GetAsync(bookingId);
+            if (HubConnection.State == HubConnectionState.Connected)
+            {
+                // Send notification to the user and all managers in the department
+                await HubConnection.SendAsync("SendBookingStatusUpdate", booking.Data!.AccountId, _currentUserDepartmentId);
+            }
+        }
+    }
+
+    private async Task HandleRejectBooking(Guid bookingId)
+    {
+        //Get Manager Id
+        var managerId = Guid.Empty;
+        var user = HttpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
+            {
+                managerId = userGuid;
+                
+                // Verify manager's department matches the booking's department
+                var booking = await BookingService.GetAsync(bookingId);
+                if (booking.Data?.Account.DepartmentId != _currentUserDepartmentId)
+                {
+                    return; // Not authorized to reject this booking
+                }
+            }
+        }
+
+        if (managerId == Guid.Empty)
+        {
+            return;
+        }
+
+        var result = await BookingService.UpdateStatusAsync(bookingId, managerId, BookingStatus.Rejected);
+        if (result.IsSuccess)
+        {
+            await LoadBookings();
+            var booking = await BookingService.GetAsync(bookingId);
+            // Use the hub connection from MainLayout
+            if (HubConnection.State == HubConnectionState.Connected)
+            {
+                // Send notification to the user and all managers in the department
+                await HubConnection.SendAsync("SendBookingStatusUpdate", booking.Data!.AccountId, _currentUserDepartmentId);
+            }
+        }
+    }
+
+}

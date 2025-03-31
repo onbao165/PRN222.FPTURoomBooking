@@ -1,5 +1,6 @@
 ﻿using System.Linq.Expressions;
 using Mapster;
+using Microsoft.EntityFrameworkCore;
 using PRN222.Assignment.FPTURoomBooking.Repositories.Models;
 using PRN222.Assignment.FPTURoomBooking.Repositories.UnitOfWork;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Campus;
@@ -27,11 +28,25 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
 
         public async Task<Result> DeleteAsync(Guid id)
         {
-            var entity = await _unitOfWork.CampusRepository.GetByIdAsync(id);
+            var entity = await _unitOfWork.CampusRepository.GetQueryable()
+                .Include(x => x.Departments)
+                .Include(x => x.Rooms)
+                .FirstOrDefaultAsync(x => x.Id == id);
             if (entity == null)
             {
                 return Result.Failure("Campus not found");
             }
+
+            if (entity.Departments.Count != 0)
+            {
+                return Result.Failure("Cannot delete campus with associated departments");
+            }
+            
+            if (entity.Rooms.Count != 0)
+            {
+                return Result.Failure("Cannot delete campus with associated rooms");
+            }
+
             _unitOfWork.CampusRepository.Remove(entity);
             await _unitOfWork.SaveChangesAsync();
             return Result.Success();
@@ -44,6 +59,7 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             {
                 return Result<CampusModel>.Failure("Campus not found");
             }
+
             return entity.Adapt<CampusModel>();
         }
 
@@ -54,7 +70,7 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
 
             if (!string.IsNullOrEmpty(model.SearchTerm))
             {
-                filter = filter.CombineAndAlsoExpressions(x => true);
+                filter = filter.CombineAndAlsoExpressions(x => x.Name.Contains(model.SearchTerm));
             }
 
             query = query.Where(filter);
