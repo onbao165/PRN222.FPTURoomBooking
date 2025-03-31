@@ -1,6 +1,7 @@
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Booking;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.RoomSlot;
 using PRN222.Assignment.FPTURoomBooking.Repositories.Models;
+using PRN222.Assignment.FPTURoomBooking.Services.Models.Slot;
 using PRN222.Assignment.FPTURoomBooking.Services.Utils;
 
 namespace PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces;
@@ -13,5 +14,6 @@ public interface IBookingService
     Task<Result<BookingModel>> GetAsync(Guid id);
     Task<Result<PaginationResult<BookingModel>>> GetPagedAsync(GetBookingModel model);
     Task<Result<BookingModel>> CreateBookingWithRoomSlots(BookingModel booking, IEnumerable<RoomSlotModel> roomSlots);
+    Task<Result<BookingModel>> CreateBookingWithSlots(BookingModel booking, SlotModel slot);
     Task<Result> UpdateStatusAsync(Guid id,Guid managerId, BookingStatus status);
 }

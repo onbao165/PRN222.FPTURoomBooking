@@ -5,6 +5,7 @@ using PRN222.Assignment.FPTURoomBooking.Repositories.Models;
 using PRN222.Assignment.FPTURoomBooking.Repositories.UnitOfWork;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Booking;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.RoomSlot;
+using PRN222.Assignment.FPTURoomBooking.Services.Models.Slot;
 using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces;
 using PRN222.Assignment.FPTURoomBooking.Services.Utils;
 
@@ -136,6 +137,30 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
                     var roomSlotEntity = slot.Adapt<RoomSlot>();
                     _unitOfWork.RoomSlotRepository.Add(roomSlotEntity);
                 }
+
+                await _unitOfWork.SaveChangesAsync();
+
+                // Return the created booking
+                var createdBooking = bookingEntity.Adapt<BookingModel>();
+                return createdBooking;
+            }
+            catch (Exception ex)
+            {
+                return Result<BookingModel>.Failure($"Failed to create booking: {ex.Message}");
+            }
+        }
+
+        public async Task<Result<BookingModel>> CreateBookingWithSlots(BookingModel booking, SlotModel slot)
+        {
+            try
+            {
+                // Create booking
+                var bookingEntity = booking.Adapt<Booking>();
+                _unitOfWork.BookingRepository.Add(bookingEntity);
+
+                // Create slot
+                var slotEntity = slot.Adapt<Slot>();
+                _unitOfWork.SlotRepository.Add(slotEntity);
 
                 await _unitOfWork.SaveChangesAsync();
 
