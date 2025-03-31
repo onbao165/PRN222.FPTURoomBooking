@@ -41,7 +41,7 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
         public async Task<Result<RoomModel>> GetAsync(Guid id)
         {
             var entity = await _unitOfWork.RoomRepository.GetQueryable()
-                .Include(x => x.Department)
+                .Include(x => x.Campus)
                 .ProjectToType<RoomModel>()
                 .FirstOrDefaultAsync(x => x.Id == id);
             return entity ?? Result<RoomModel>.Failure("Room not found");
@@ -57,14 +57,9 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
                 filter = filter.CombineAndAlsoExpressions(x => true);
             }
             
-            if (!model.DepartmentId.IsNullOrGuidEmpty())
-            {
-                filter = filter.CombineAndAlsoExpressions(x => x.DepartmentId == model.DepartmentId);
-            }
-            
             if (!model.CampusId.IsNullOrGuidEmpty())
             {
-                filter = filter.CombineAndAlsoExpressions(x => x.Department.CampusId == model.CampusId);
+                filter = filter.CombineAndAlsoExpressions(x => x.CampusId == model.CampusId);
             }
 
             query = query.Where(filter);

@@ -4,7 +4,6 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Models.Room;
 
 public class GetRoomModel : PaginationParams
 {
-    public Guid? DepartmentId { get; set; }
     public Guid? CampusId { get; set; }
     
 }

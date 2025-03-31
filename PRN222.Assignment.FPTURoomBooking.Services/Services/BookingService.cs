@@ -76,13 +76,6 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
                     filter = filter.CombineAndAlsoExpressions(x => x.ManagerId == model.ManagerId);
                 }
 
-                if (!model.DepartmentId.IsNullOrGuidEmpty())
-                {
-                    query = query.Include(x => x.RoomSlots).ThenInclude(x => x.Room);
-                    filter = filter.CombineAndAlsoExpressions(x =>
-                        x.RoomSlots.Any(rs => rs.Room.DepartmentId == model.DepartmentId));
-                }
-
                 if (model.BookingDate.HasValue)
                 {
                     filter = filter.CombineAndAlsoExpressions(x => x.BookingDate == model.BookingDate.Value);

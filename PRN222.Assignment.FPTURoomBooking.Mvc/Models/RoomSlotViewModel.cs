@@ -8,7 +8,6 @@ public class RoomSlotViewModel
     public Guid Id { get; set; }
     public Guid RoomId { get; set; }
     public string RoomName { get; set; } = string.Empty;
-    public string DepartmentName { get; set; } = string.Empty;
     public string CampusName { get; set; } = string.Empty;
     public TimeSlot TimeSlot { get; set; }
     public string TimeSlotText => TimeSlot switch

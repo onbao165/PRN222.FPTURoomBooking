@@ -14,5 +14,6 @@ public interface IUnitOfWork : IDisposable
     IGenericRepository<Department, Guid> DepartmentRepository { get; }
     IGenericRepository<Room, Guid> RoomRepository { get; }
     IGenericRepository<RoomSlot, Guid> RoomSlotRepository { get; }
+    IGenericRepository<Slot, Guid> SlotRepository { get; }
     Task<int> SaveChangesAsync(bool trackAudit = true, bool trackSoftDelete = true);
 }

@@ -160,7 +160,6 @@
                 var accountResult = await AccountService.GetAsync(userGuid);
                 if (accountResult is { IsSuccess: true, Data: not null })
                 {
-                    _getModel.DepartmentId = accountResult.Data.DepartmentId;
                     if (accountResult.Data.DepartmentId.HasValue)
                     {
                         _currentUserDepartmentId = accountResult.Data.DepartmentId.Value;
@@ -264,7 +263,6 @@
             PageNumber = 1,
             OrderBy = "bookingDate",
             IsDescending = true,
-            DepartmentId = _getModel.DepartmentId,
             ManagerId = _getModel.ManagerId
         };
         await LoadBookings();

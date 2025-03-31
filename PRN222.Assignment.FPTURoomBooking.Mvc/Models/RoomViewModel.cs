@@ -7,9 +7,10 @@ public class RoomViewModel
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public Guid DepartmentId { get; set; }
-    public string DepartmentName { get; set; } = string.Empty;
+    public Guid CampusId { get; set; }
     public string CampusName { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 }
 
 public class RoomListViewModel
@@ -20,6 +21,5 @@ public class RoomListViewModel
     public bool IsDescending { get; set; }
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 10;
-    public Guid? DepartmentId { get; set; }
     public Guid? CampusId { get; set; }
 } 

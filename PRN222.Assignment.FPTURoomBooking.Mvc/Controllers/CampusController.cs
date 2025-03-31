@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using PRN222.Assignment.FPTURoomBooking.Mvc.Models;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Campus;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Department;
+using PRN222.Assignment.FPTURoomBooking.Services.Models.Room;
 using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces;
 using PRN222.Assignment.FPTURoomBooking.Services.Utils;
 
@@ -14,11 +15,16 @@ public class CampusController : Controller
 {
     private readonly ICampusService _campusService;
     private readonly IDepartmentService _departmentService;
+    private readonly IRoomService _roomService;
 
-    public CampusController(ICampusService campusService, IDepartmentService departmentService)
+    public CampusController(
+        ICampusService campusService, 
+        IDepartmentService departmentService,
+        IRoomService roomService)
     {
         _campusService = campusService;
         _departmentService = departmentService;
+        _roomService = roomService;
     }
 
     public async Task<IActionResult> Index(CampusListViewModel model)
@@ -45,8 +51,11 @@ public class CampusController : Controller
 
         var resultModel = new CampusListViewModel
         {
-            Campuses = new PaginationResult<CampusViewModel>(result.Data.Items.Adapt<List<CampusViewModel>>(),
-                result.Data.TotalItems, result.Data.PageNumber, result.Data.PageSize),
+            Campuses = new PaginationResult<CampusViewModel>(
+                result.Data.Items.Adapt<List<CampusViewModel>>(),
+                result.Data.TotalItems, 
+                result.Data.PageNumber, 
+                result.Data.PageSize),
             SearchTerm = model.SearchTerm,
             OrderBy = model.OrderBy,
             IsDescending = model.IsDescending,
@@ -68,18 +77,34 @@ public class CampusController : Controller
 
         var campus = campusResult.Data.Adapt<CampusViewModel>();
 
+        // Get departments for this campus
         var departmentsModel = new GetDepartmentModel
         {
             CampusId = id,
             PageNumber = 1,
-            PageSize = 50, // Show a reasonable number of departments
+            PageSize = 50,
             OrderBy = "name"
         };
 
         var departmentsResult = await _departmentService.GetPagedAsync(departmentsModel);
 
+        // Get rooms for this campus
+        var roomsModel = new GetRoomModel
+        {
+            CampusId = id,
+            PageNumber = 1,
+            PageSize = 50,
+            OrderBy = "name"
+        };
+
+        var roomsResult = await _roomService.GetPagedAsync(roomsModel);
+
         ViewBag.Departments = departmentsResult.IsSuccess
             ? departmentsResult.Data
+            : null;
+
+        ViewBag.Rooms = roomsResult.IsSuccess
+            ? roomsResult.Data
             : null;
 
         return View(campus);

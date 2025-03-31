@@ -111,20 +111,6 @@
         {
             await LoadDepartments();
         }
-        else
-        {
-            // Manager role - get department from claims
-            var departmentId = user.FindFirstValue("DepartmentId");
-            if (!string.IsNullOrEmpty(departmentId) && Guid.TryParse(departmentId, out var departmentGuid))
-            {
-                _roomModel.DepartmentId = departmentGuid;
-            }
-            else
-            {
-                NavigationManager.NavigateTo("/Account/Login");
-                return;
-            }
-        }
 
         // Setup SignalR connection
         if (HubConnection.State == HubConnectionState.Disconnected)

@@ -9,7 +9,6 @@ public class GetBookingModel : PaginationParams
     
     public Guid? RoomId { get; set; }
     public Guid? ManagerId { get; set; }
-    public Guid? DepartmentId { get; set; }
     public BookingStatus? Status { get; set; }
     public DateTime? BookingDate { get; set; }
     // Add date range properties

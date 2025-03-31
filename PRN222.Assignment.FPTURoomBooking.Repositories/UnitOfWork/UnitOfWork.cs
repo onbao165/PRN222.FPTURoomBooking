@@ -19,6 +19,7 @@ public class UnitOfWork : IUnitOfWork
     private IGenericRepository<Department, Guid>? _departmentRepository;
     private IGenericRepository<Room, Guid>? _roomRepository;
     private IGenericRepository<RoomSlot, Guid>? _roomSlotRepository;
+    private IGenericRepository<Slot, Guid>? _slotRepository;
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -42,7 +43,9 @@ public class UnitOfWork : IUnitOfWork
 
     public IGenericRepository<RoomSlot, Guid> RoomSlotRepository =>
         _roomSlotRepository ??= new GenericRepository<RoomSlot, Guid>(_context);
-
+    
+    public IGenericRepository<Slot, Guid> SlotRepository =>
+        _slotRepository ??= new GenericRepository<Slot, Guid>(_context);
 
     public async Task<int> SaveChangesAsync(bool trackAudit = true, bool trackSoftDelete = true)
     {

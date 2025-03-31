@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using PRN222.Assignment.FPTURoomBooking.Mvc.Models;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Department;
-using PRN222.Assignment.FPTURoomBooking.Services.Models.Room;
 using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces;
 using PRN222.Assignment.FPTURoomBooking.Services.Utils;
 
@@ -15,16 +14,13 @@ public class DepartmentController : Controller
 {
     private readonly IDepartmentService _departmentService;
     private readonly ICampusService _campusService;
-    private readonly IRoomService _roomService;
 
     public DepartmentController(
         IDepartmentService departmentService,
-        ICampusService campusService,
-        IRoomService roomService)
+        ICampusService campusService)
     {
         _departmentService = departmentService;
         _campusService = campusService;
-        _roomService = roomService;
     }
 
     public async Task<IActionResult> Index(DepartmentListViewModel model)
@@ -104,21 +100,6 @@ public class DepartmentController : Controller
 
         // Ensure we have the campus name
         department.CampusName = departmentResult.Data.Campus.Name;
-
-        // Get rooms for this department
-        var roomsModel = new GetRoomModel
-        {
-            DepartmentId = id,
-            PageNumber = 1,
-            PageSize = 50, // Show a reasonable number of rooms
-            OrderBy = "name"
-        };
-
-        var roomsResult = await _roomService.GetPagedAsync(roomsModel);
-
-        ViewBag.Rooms = roomsResult.IsSuccess
-            ? roomsResult.Data
-            : null;
 
         return View(department);
     }

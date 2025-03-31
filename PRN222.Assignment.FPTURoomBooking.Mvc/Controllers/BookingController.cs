@@ -9,7 +9,6 @@ using PRN222.Assignment.FPTURoomBooking.Mvc.Models;
 using PRN222.Assignment.FPTURoomBooking.Repositories.Models;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Booking;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Campus;
-using PRN222.Assignment.FPTURoomBooking.Services.Models.Department;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Room;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.RoomSlot;
 using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces;
@@ -24,7 +23,6 @@ public class BookingController : Controller
     private readonly IRoomSlotService _roomSlotService;
     private readonly IAccountService _accountService;
     private readonly IRoomService _roomService;
-    private readonly IDepartmentService _departmentService;
     private readonly ICampusService _campusService;
     private readonly IHubContext<MessageHub, IMessageHubClient> _hubContext;
 
@@ -33,14 +31,12 @@ public class BookingController : Controller
         IRoomSlotService roomSlotService,
         IAccountService accountService,
         IRoomService roomService,
-        IDepartmentService departmentService,
         ICampusService campusService, IHubContext<MessageHub, IMessageHubClient> hubContext)
     {
         _bookingService = bookingService;
         _roomSlotService = roomSlotService;
         _accountService = accountService;
         _roomService = roomService;
-        _departmentService = departmentService;
         _campusService = campusService;
         _hubContext = hubContext;
     }
@@ -122,8 +118,7 @@ public class BookingController : Controller
                     var roomSlotViewModel = slot.Adapt<RoomSlotViewModel>();
 
                     roomSlotViewModel.RoomName = slot.Room.Name;
-                    roomSlotViewModel.DepartmentName = slot.Room.Department.Name;
-                    roomSlotViewModel.CampusName = slot.Room.Department.Campus.Name;
+                    roomSlotViewModel.CampusName = slot.Room.Campus.Name;
 
                     viewModel.RoomSlots.Add(roomSlotViewModel);
                 }
@@ -201,11 +196,7 @@ public class BookingController : Controller
             var roomSlotViewModel = slot.Adapt<RoomSlotViewModel>();
 
             roomSlotViewModel.RoomName = slot.Room.Name;
-
-            roomSlotViewModel.DepartmentName = slot.Room.Department.Name;
-
-            roomSlotViewModel.CampusName = slot.Room.Department.Campus.Name;
-
+            roomSlotViewModel.CampusName = slot.Room.Campus.Name;
             booking.RoomSlots.Add(roomSlotViewModel);
         }
 
@@ -233,13 +224,12 @@ public class BookingController : Controller
             if (roomResult is { IsSuccess: true, Data: not null })
             {
                 model.RoomId = roomId.Value;
-                model.DepartmentId = roomResult.Data.Department.Id;
-                model.CampusId = roomResult.Data.Department.Campus.Id;
+                model.CampusId = roomResult.Data.Campus.Id;
             }
         }
 
         await PopulateAvailableRoomSlots(model);
-        await PopulateDropdowns(model.CampusId, model.DepartmentId);
+        await PopulateDropdowns(model.CampusId);
 
         return View(model);
     }
@@ -249,7 +239,8 @@ public class BookingController : Controller
     public async Task<IActionResult> Create(CreateBookingViewModel model)
     {
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(currentUserId))
+        var currentDepartmentId = User.FindFirstValue("DepartmentId");
+        if (string.IsNullOrEmpty(currentUserId) || string.IsNullOrEmpty(currentDepartmentId))
         {
             return Challenge();
         }
@@ -257,7 +248,7 @@ public class BookingController : Controller
         if (!ModelState.IsValid)
         {
             await PopulateAvailableRoomSlots(model);
-            await PopulateDropdowns(model.CampusId, model.DepartmentId);
+            await PopulateDropdowns(model.CampusId);
             return View(model);
         }
 
@@ -266,7 +257,7 @@ public class BookingController : Controller
         {
             ModelState.AddModelError(nameof(model.BookingDate), "Booking date must be at least one day from today");
             await PopulateAvailableRoomSlots(model);
-            await PopulateDropdowns(model.CampusId, model.DepartmentId);
+            await PopulateDropdowns(model.CampusId);
             return View(model);
         }
 
@@ -276,7 +267,7 @@ public class BookingController : Controller
         {
             ModelState.AddModelError(nameof(model.SelectedRoomSlots), "Please select at least one room slot");
             await PopulateAvailableRoomSlots(model);
-            await PopulateDropdowns(model.CampusId, model.DepartmentId);
+            await PopulateDropdowns(model.CampusId);
             return View(model);
         }
 
@@ -303,16 +294,13 @@ public class BookingController : Controller
         if (result is { IsSuccess: true, Data: not null })
         {
             // Notify the managers that a new booking has been created
-            var roomId = roomSlots.FirstOrDefault()?.RoomId;
-            var room = await _roomService.GetAsync(roomId!.Value);
-            var departmentId = room.Data!.Department.Id;
-            await _hubContext.Clients.Group(departmentId.ToString()).ReceiveNewBooking();
+            await _hubContext.Clients.Group(currentDepartmentId).ReceiveNewBooking();
             return RedirectToAction(nameof(Details), new { id = result.Data.Id });
         }
 
         ModelState.AddModelError(string.Empty, result.Error ?? "Failed to create booking");
         await PopulateAvailableRoomSlots(model);
-        await PopulateDropdowns(model.CampusId, model.DepartmentId);
+        await PopulateDropdowns(model.CampusId);
 
         return View(model);
     }
@@ -367,11 +355,7 @@ public class BookingController : Controller
             var roomSlotViewModel = slot.Adapt<RoomSlotViewModel>();
 
             roomSlotViewModel.RoomName = slot.Room.Name;
-
-            roomSlotViewModel.DepartmentName = slot.Room.Department.Name;
-
-            roomSlotViewModel.CampusName = slot.Room.Department.Campus.Name;
-
+            roomSlotViewModel.CampusName = slot.Room.Campus.Name;
             model.RoomSlots.Add(roomSlotViewModel);
         }
 
@@ -489,7 +473,8 @@ public class BookingController : Controller
     public async Task<IActionResult> Cancel(Guid id)
     {
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(currentUserId))
+        var currentDepartmentId = User.FindFirstValue("DepartmentId");
+        if (string.IsNullOrEmpty(currentUserId) || string.IsNullOrEmpty(currentDepartmentId))
         {
             return Challenge();
         }
@@ -539,10 +524,7 @@ public class BookingController : Controller
 
         TempData["SuccessMessage"] = "Booking cancelled successfully";
         // Send notification to managers
-        var roomId = roomSlots.Data?.Items.FirstOrDefault()?.RoomId;
-        var room = await _roomService.GetAsync(roomId!.Value);
-        var departmentId = room.Data!.Department.Id;
-        await _hubContext.Clients.Group(departmentId.ToString()).ReceiveBookingStatusUpdate();
+        await _hubContext.Clients.Group(currentDepartmentId).ReceiveBookingStatusUpdate();
         return RedirectToAction(nameof(Details), new { id });
     }
 
@@ -551,7 +533,6 @@ public class BookingController : Controller
         // Get all rooms based on filters
         var roomQuery = new GetRoomModel
         {
-            DepartmentId = model.DepartmentId,
             CampusId = model.CampusId,
             PageSize = 100
         };
@@ -600,15 +581,14 @@ public class BookingController : Controller
                 {
                     RoomId = room.Id,
                     RoomName = room.Name,
-                    DepartmentName = room.Department.Name,
-                    CampusName = room.Department.Campus.Name,
+                    CampusName = room.Campus.Name,
                     TimeSlot = timeSlot,
                 });
             }
         }
     }
 
-    private async Task PopulateDropdowns(Guid? campusId = null, Guid? departmentId = null)
+    private async Task PopulateDropdowns(Guid? campusId = null)
     {
         // Get campuses
         var campusesResult = await _campusService.GetPagedAsync(new GetCampusModel
@@ -617,57 +597,25 @@ public class BookingController : Controller
         });
         ViewBag.Campuses = campusesResult.IsSuccess ? campusesResult.Data?.Items : new List<CampusModel>();
 
-        // Get departments for selected campus
-        var departmentsResult = await _departmentService.GetPagedAsync(new GetDepartmentModel
-        {
-            PageSize = 100,
-            CampusId = campusId
-        });
-        ViewBag.Departments = departmentsResult.IsSuccess ? departmentsResult.Data?.Items : new List<DepartmentModel>();
-
-        // Get rooms for selected department
+        // Get rooms for selected campus
         var roomsResult = await _roomService.GetPagedAsync(new GetRoomModel
         {
             PageSize = 100,
-            DepartmentId = departmentId
+            CampusId = campusId,
         });
         ViewBag.Rooms = roomsResult.IsSuccess ? roomsResult.Data?.Items : new List<RoomModel>();
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetDepartments(Guid? campusId)
+    public async Task<IActionResult> GetRooms(Guid? campusId)
     {
         if (!campusId.HasValue)
-            return Json(new List<object>());
-
-        var departmentsResult = await _departmentService.GetPagedAsync(new GetDepartmentModel
-        {
-            PageSize = 100,
-            CampusId = campusId
-        });
-
-        if (!departmentsResult.IsSuccess || departmentsResult.Data == null)
-            return Json(new List<object>());
-
-        var departments = departmentsResult.Data.Items.Select(d => new
-        {
-            id = d.Id,
-            name = d.Name
-        });
-
-        return Json(departments);
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> GetRooms(Guid? departmentId)
-    {
-        if (!departmentId.HasValue)
             return Json(new List<object>());
 
         var roomsResult = await _roomService.GetPagedAsync(new GetRoomModel
         {
             PageSize = 100,
-            DepartmentId = departmentId
+            CampusId = campusId
         });
 
         if (!roomsResult.IsSuccess || roomsResult.Data == null)
@@ -683,19 +631,18 @@ public class BookingController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAvailableRoomSlots(DateTime? bookingDate, Guid? campusId, Guid? departmentId,
+    public async Task<IActionResult> GetAvailableRoomSlots(DateTime? bookingDate, Guid? campusId,
         Guid? roomId)
     {
         var model = new CreateBookingViewModel
         {
             BookingDate = bookingDate ?? DateTime.Today,
             CampusId = campusId,
-            DepartmentId = departmentId,
             RoomId = roomId
         };
 
         // Check if all required filters are selected
-        if (!bookingDate.HasValue || !campusId.HasValue || !departmentId.HasValue || !roomId.HasValue)
+        if (!bookingDate.HasValue || !campusId.HasValue|| !roomId.HasValue)
         {
             return PartialView("_AvailableRoomSlotsPartial", model);
         }
@@ -703,7 +650,6 @@ public class BookingController : Controller
         // Get all rooms based on filters
         var roomQuery = new GetRoomModel
         {
-            DepartmentId = model.DepartmentId,
             CampusId = model.CampusId,
             PageSize = 100
         };
@@ -726,7 +672,6 @@ public class BookingController : Controller
         var bookingsQuery = new GetBookingModel
         {
             BookingDate = model.BookingDate,
-            DepartmentId = model.DepartmentId,
             RoomId = model.RoomId,
             PageSize = 1000
         };
@@ -767,8 +712,7 @@ public class BookingController : Controller
                 {
                     RoomId = room.Id,
                     RoomName = room.Name,
-                    DepartmentName = room.Department.Name,
-                    CampusName = room.Department.Campus.Name,
+                    CampusName = room.Campus.Name,
                     TimeSlot = timeSlot,
                 });
             }
@@ -792,8 +736,7 @@ public class BookingController : Controller
             {
                 var roomSlotViewModel = slot.Adapt<RoomSlotViewModel>();
                 roomSlotViewModel.RoomName = slot.Room.Name;
-                roomSlotViewModel.DepartmentName = slot.Room.Department.Name;
-                roomSlotViewModel.CampusName = slot.Room.Department.Campus.Name;
+                roomSlotViewModel.CampusName = slot.Room.Campus.Name;
                 model.RoomSlots.Add(roomSlotViewModel);
             }
         }

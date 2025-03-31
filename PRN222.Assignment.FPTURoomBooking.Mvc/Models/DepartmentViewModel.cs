@@ -9,6 +9,8 @@ public class DepartmentViewModel
     public string? Description { get; set; }
     public Guid CampusId { get; set; }
     public string CampusName { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
 }
 
 public class DepartmentListViewModel

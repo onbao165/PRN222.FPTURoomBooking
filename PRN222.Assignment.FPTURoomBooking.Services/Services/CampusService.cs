@@ -30,15 +30,21 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
         {
             var entity = await _unitOfWork.CampusRepository.GetQueryable()
                 .Include(x => x.Departments)
+                .Include(x => x.Rooms)
                 .FirstOrDefaultAsync(x => x.Id == id);
             if (entity == null)
             {
                 return Result.Failure("Campus not found");
             }
 
-            if (entity.Departments.Any())
+            if (entity.Departments.Count != 0)
             {
                 return Result.Failure("Cannot delete campus with associated departments");
+            }
+            
+            if (entity.Rooms.Count != 0)
+            {
+                return Result.Failure("Cannot delete campus with associated rooms");
             }
 
             _unitOfWork.CampusRepository.Remove(entity);

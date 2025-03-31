@@ -31,7 +31,7 @@ public class MappingConfig
             .Ignore(dest => dest.UpdatedAt);
 
         TypeAdapterConfig<RoomModel, Room>.NewConfig()
-            .Ignore(dest => dest.Department)
+            .Ignore(dest => dest.Campus)
             .Ignore(dest => dest.CreatedAt)
             .Ignore(dest => dest.UpdatedAt);
 

@@ -96,10 +96,8 @@ public class ProfileController : Controller
                     var roomSlotViewModel = slot.Adapt<RoomSlotViewModel>();
 
                     roomSlotViewModel.RoomName = slot.Room.Name;
-
-                    roomSlotViewModel.DepartmentName = slot.Room.Department.Name;
-
-                    roomSlotViewModel.CampusName = slot.Room.Department.Campus.Name;
+                    
+                    roomSlotViewModel.CampusName = slot.Room.Campus.Name;
 
                     bookingViewModel.RoomSlots.Add(roomSlotViewModel);
                 }
