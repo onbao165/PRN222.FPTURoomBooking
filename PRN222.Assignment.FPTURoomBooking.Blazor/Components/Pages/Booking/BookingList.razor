@@ -105,7 +105,7 @@
                                             @booking.Status
                                         </span>
                                 </td>
-                                <td>@booking.CreatedAt.ToString("dd-MM-yyyy HH:mm tt")</td>
+                                <td>@booking.CreatedAt.ToString("dd-MM-yyyy HH:mm")</td>
                                 <td>
                                     <a href="/Booking/Details/@booking.Id" class="btn btn-sm btn-info">
                                         Details
@@ -206,7 +206,7 @@
                     {
                         await InvokeAsync(async () =>
                         {
-                            await LoadBookings();
+                            await LoadBookings(); 
                             StateHasChanged();
                         });
                     }
@@ -271,7 +271,7 @@
             PageNumber = 1,
             OrderBy = "bookingDate",
             IsDescending = true,
-            ManagerId = _getModel.ManagerId
+            DepartmentId = _currentUserDepartmentId
         };
         await LoadBookings();
     }

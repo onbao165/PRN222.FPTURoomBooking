@@ -9,7 +9,7 @@ public interface ISlotService
     Task<Result> UpdateAsync(SlotModel model);
     Task<Result> DeleteAsync(Guid id);
     Task<Result<SlotModel>> GetAsync(Guid id);
-    Task<Result<SlotModel>> GetByBookingIdAsync(Guid bookingId);
+    Task<Result<SlotModel>> GetByBookingIdAsync(Guid bookingId, bool includeDeleted = false);
     Task<Result<PaginationResult<SlotModel>>> GetPagedAsync(GetSlotModel model);
     Task<Result<IEnumerable<SlotModel>>> GetByRoomAndDateAsync(Guid roomId, DateTime date);
 }

@@ -50,6 +50,7 @@
                         <th>Name</th>
                         <th>Description</th>
                         <th>Campus</th>
+                        <th>Created At</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -60,6 +61,7 @@
                             <td>@room.Name</td>
                             <td>@room.Description</td>
                             <td>@room.CampusName</td>
+                            <td>@room.CreatedAt.ToString("dd-MM-yyyy")</td>
                             <td>
                                 <a asp-action="Details" asp-route-id="@room.Id" class="btn btn-sm btn-info">Details</a>
                             </td>

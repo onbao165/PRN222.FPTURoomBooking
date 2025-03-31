@@ -65,7 +65,7 @@
 
                     <div class="mb-3">
                         <label class="fw-bold">Account Created</label>
-                        <p>@Model.CreatedAt.ToString("yyyy-MM-dd")</p>
+                        <p>@Model.CreatedAt.ToString("dd-MM-yyyy")</p>
                     </div>
                 </div>
             </div>
@@ -104,7 +104,7 @@
                                     {
                                         <tr>
                                             <td>@booking.Id</td>
-                                            <td>@booking.BookingDate.ToString("yyyy-MM-dd")</td>
+                                            <td>@booking.BookingDate.ToString("dd-MM-yyyy")</td>
                                             <td>
                                                 @switch (booking.Status)
                                                 {
@@ -124,7 +124,7 @@
                                                         throw new ArgumentOutOfRangeException();
                                                 }
                                             </td>
-                                            <td>@booking.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                            <td>@booking.CreatedAt.ToString("dd-MM-yyyy")</td>
                                             <td>
                                                 <a asp-controller="Booking" asp-action="Details" asp-route-id="@booking.Id" class="btn btn-sm btn-info">
                                                     <i class="fas fa-eye"></i> Details

@@ -45,13 +45,13 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <p><strong>Booking ID:</strong> @_booking.Id</p>
-                                <p><strong>Booking Date:</strong> @_booking.BookingDate.ToString("yyyy-MM-dd")</p>
+                                <p><strong>Booking Date:</strong> @_booking.BookingDate.ToString("dd-MM-yyyy")</p>
                                 <p><strong>Booked By:</strong> @_booking.AccountName</p>
                                 <p>
                                     <strong>Status:</strong>
                                     <span class="badge @GetStatusBadgeClass(_booking.Status)">@_booking.Status</span>
                                 </p>
-                                <p><strong>Created At:</strong> @_booking.CreatedAt.ToString("dd-MM-yyyy HH:mm tt")</p>
+                                <p><strong>Created At:</strong> @_booking.CreatedAt.ToString("dd-MM-yyyy HH:mm")</p>
                             </div>
                         </div>
 
@@ -72,8 +72,8 @@
                                     {
                                         <tr>
                                             <td>@slot.RoomName</td>
-                                            <td>@slot.StartTime.ToString("dd-MM-yyyy HH:mm tt")</td>
-                                            <td>@slot.EndTime.ToString("dd-MM-yyyy HH:mm tt")</td>
+                                            <td>@slot.StartTime.ToString("dd-MM-yyyy HH:mm")</td>
+                                            <td>@slot.EndTime.ToString("dd-MM-yyyy HH:mm")</td>
                                         </tr>
                                     }
                                     </tbody>

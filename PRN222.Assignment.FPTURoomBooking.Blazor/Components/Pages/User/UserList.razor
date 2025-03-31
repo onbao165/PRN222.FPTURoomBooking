@@ -147,7 +147,7 @@
                                 <td>@user.Role</td>
                                 <td>@(user.Department?.Name ?? "No Department")
                                 </td>
-                                <td>@user.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                <td>@user.CreatedAt.ToString("dd-MM-yyyy")</td>
                                 <td>
                                     <button class="btn btn-sm btn-info me-2" @onclick="() => ViewDetails(user.Id)">
                                         Details

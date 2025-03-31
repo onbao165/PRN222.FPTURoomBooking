@@ -162,7 +162,7 @@ public class BookingController : Controller
         }
 
         // Get the single slot for this booking
-        var slot = await _slotService.GetByBookingIdAsync(booking.Id);
+        var slot = await _slotService.GetByBookingIdAsync(booking.Id, booking.Status == BookingStatus.Cancelled);
         if (slot is { IsSuccess: true, Data: not null })
         {
             var slotData = slot.Data;

@@ -132,7 +132,7 @@
                             {
                                 <tr>
                                     <td>@(booking.Id.ToString()[..8])...</td>
-                                    <td>@booking.BookingDate.ToString("yyyy-MM-dd")</td>
+                                    <td>@booking.BookingDate.ToString("dd-MM-yyyy")</td>
                                     <td>
                                         @switch (booking.Status)
                                         {
@@ -153,7 +153,7 @@
                                                 break;
                                         }
                                     </td>
-                                    <td>@booking.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td>@booking.CreatedAt.ToString("dd-MM-yyyy HH:mm")</td>
                                     <td>
                                         <div class="btn-group" role="group">
                                             <a asp-action="Details" asp-route-id="@booking.Id" class="btn btn-sm btn-info">

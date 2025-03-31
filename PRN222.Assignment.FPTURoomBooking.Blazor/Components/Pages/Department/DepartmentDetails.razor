@@ -64,12 +64,6 @@
         box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
     }
 
-    .validation-message {
-        font-size: 0.875rem;
-        color: #e53e3e;
-        margin-top: 0.25rem;
-    }
-
     .details-view {
         background-color: #fff;
         padding: 2rem;
@@ -294,42 +288,8 @@
         {
             _loading = false;
         }
-
-        if (HubConnection.State == HubConnectionState.Disconnected)
-        {
-            try
-            {
-                await HubConnection.StartAsync();
-                Console.WriteLine("Connected to SignalR hub");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error connecting to SignalR: {ex.Message}");
-            }
-        }
-
-        if (HubConnection.State == HubConnectionState.Connected)
-        {
-            try
-            {
-                HubConnection.On("ReceiveDepartmentUpdate", async () =>
-                {
-                    Console.WriteLine("Received department update");
-                    if (NavigationManager.Uri.Contains("/Campus"))
-                    {
-                        await InvokeAsync(async () =>
-                        {
-                            await LoadDepartment();
-                            StateHasChanged();
-                        });
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error receiving department update: {ex.Message}");
-            }
-        }
+        
+        await InitializeSignalR();
     }
 
     private async Task LoadCampuses()
@@ -425,6 +385,31 @@
     private void GoBack()
     {
         NavigationManager.NavigateTo("/Department");
+    }
+
+    private async Task InitializeSignalR()
+    {
+        if (HubConnection.State == HubConnectionState.Disconnected)
+        {
+            try
+            {
+                await HubConnection.StartAsync();
+                Console.WriteLine("Connected to SignalR hub");
+                
+                HubConnection.On("ReceiveDepartmentUpdate", async () =>
+                {
+                    await InvokeAsync(async () =>
+                    {
+                        await LoadDepartment();
+                        StateHasChanged();
+                    });
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error with SignalR: {ex.Message}");
+            }
+        }
     }
 
 }
