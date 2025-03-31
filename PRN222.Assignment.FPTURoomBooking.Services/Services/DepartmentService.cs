@@ -29,17 +29,11 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
         public async Task<Result> DeleteAsync(Guid id)
         {
             var entity = await _unitOfWork.DepartmentRepository.GetQueryable()
-                .Include(x => x.Rooms)
                 .Include(x => x.Accounts)
                 .FirstOrDefaultAsync(x => x.Id == id);
             if (entity == null)
             {
                 return Result.Failure("Department not found");
-            }
-
-            if (entity.Rooms.Any())
-            {
-                return Result.Failure("Cannot delete department with associated rooms");
             }
 
             if (entity.Accounts.Any())
