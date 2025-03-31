@@ -7,6 +7,7 @@ public class GetBookingModel : PaginationParams
 {
     public Guid? AccountId { get; set; }
     
+    public Guid? DepartmentId { get; set; }
     public Guid? RoomId { get; set; }
     public Guid? ManagerId { get; set; }
     public BookingStatus? Status { get; set; }

@@ -26,6 +26,7 @@ public static class Startup
         builder.Services.AddScoped<IDepartmentService, DepartmentService>();
         builder.Services.AddScoped<IRoomService, RoomService>();
         builder.Services.AddScoped<IRoomSlotService, RoomSlotService>();
+        builder.Services.AddScoped<ISlotService, SlotService>();
 
         // Register Utils
         builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();

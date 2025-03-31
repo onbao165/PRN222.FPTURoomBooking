@@ -98,14 +98,14 @@
                         {
                             <tr>
                                 <td>@booking.Id.ToString().Substring(0, 8)...</td>
-                                <td>@booking.BookingDate.ToString("yyyy-MM-dd")</td>
+                                <td>@booking.BookingDate.ToString("dd-MM-yyyy")</td>
                                 <td>@booking.Account.FullName</td>
                                 <td>
                                         <span class="badge @GetStatusBadgeClass(booking.Status)">
                                             @booking.Status
                                         </span>
                                 </td>
-                                <td>@booking.CreatedAt.ToString("g")</td>
+                                <td>@booking.CreatedAt.ToString("dd-MM-yyyy HH:mm tt")</td>
                                 <td>
                                     <a href="/Booking/Details/@booking.Id" class="btn btn-sm btn-info">
                                         Details
@@ -163,6 +163,14 @@
                     if (accountResult.Data.DepartmentId.HasValue)
                     {
                         _currentUserDepartmentId = accountResult.Data.DepartmentId.Value;
+                        // Set department filter in the get model
+                        _getModel.DepartmentId = _currentUserDepartmentId;
+                    }
+                    else
+                    {
+                        // If manager has no department, they shouldn't see any bookings
+                        NavigationManager.NavigateTo("/");
+                        return;
                     }
                 }
             }
@@ -288,6 +296,13 @@
             if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
             {
                 managerId = userGuid;
+                
+                // Verify manager's department matches the booking's department
+                var booking = await BookingService.GetAsync(bookingId);
+                if (booking.Data?.Account.DepartmentId != _currentUserDepartmentId)
+                {
+                    return; // Not authorized to approve this booking
+                }
             }
         }
 
@@ -320,6 +335,13 @@
             if (!string.IsNullOrEmpty(userId) && Guid.TryParse(userId, out var userGuid))
             {
                 managerId = userGuid;
+                
+                // Verify manager's department matches the booking's department
+                var booking = await BookingService.GetAsync(bookingId);
+                if (booking.Data?.Account.DepartmentId != _currentUserDepartmentId)
+                {
+                    return; // Not authorized to reject this booking
+                }
             }
         }
 

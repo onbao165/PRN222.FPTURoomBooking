@@ -5,13 +5,13 @@
 @using Microsoft.AspNetCore.SignalR.Client
 @using PRN222.Assignment.FPTURoomBooking.Blazor.Models
 @using PRN222.Assignment.FPTURoomBooking.Repositories.Models
-@using PRN222.Assignment.FPTURoomBooking.Services.Models.RoomSlot
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Slot
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
 @rendermode InteractiveServer
 @inject IHttpContextAccessor HttpContextAccessor
 
 @inject IBookingService BookingService
-@inject IRoomSlotService RoomSlotService
+@inject ISlotService SlotService
 @inject NavigationManager NavigationManager
 @inject HubConnection HubConnection
 @attribute [Authorize]
@@ -51,29 +51,29 @@
                                     <strong>Status:</strong>
                                     <span class="badge @GetStatusBadgeClass(_booking.Status)">@_booking.Status</span>
                                 </p>
-                                <p><strong>Created At:</strong> @_booking.CreatedAt.ToString("g")</p>
+                                <p><strong>Created At:</strong> @_booking.CreatedAt.ToString("dd-MM-yyyy HH:mm tt")</p>
                             </div>
                         </div>
 
-                        <h4 class="mt-4">Room Slots</h4>
-                        @if (_booking.RoomSlots.Any())
+                        <h4 class="mt-4">Slots</h4>
+                        @if (_booking.Slots.Any())
                         {
                             <div class="table-responsive">
                                 <table class="table table-bordered table-hover">
                                     <thead class="table-light">
                                     <tr>
                                         <th>Room</th>
-                                        <th>Time Slot</th>
-                                        <th>Time Range</th>
+                                        <th>Start Time</th>
+                                        <th>End Time</th>
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    @foreach (var slot in _booking.RoomSlots)
+                                    @foreach (var slot in _booking.Slots)
                                     {
                                         <tr>
                                             <td>@slot.RoomName</td>
-                                            <td>@slot.TimeSlot</td>
-                                            <td>@slot.TimeSlotText</td>
+                                            <td>@slot.StartTime.ToString("dd-MM-yyyy HH:mm tt")</td>
+                                            <td>@slot.EndTime.ToString("dd-MM-yyyy HH:mm tt")</td>
                                         </tr>
                                     }
                                     </tbody>
@@ -83,7 +83,7 @@
                         else
                         {
                             <div class="alert alert-info">
-                                No room slots found for this booking.
+                                No slots found for this booking.
                             </div>
                         }
 
@@ -198,19 +198,19 @@
             // Add account information
             _booking.AccountName = bookingResult.Data.Account.FullName;
 
-            // Get room slots
-            var roomSlotsModel = new GetRoomSlotModel
+            // Get slots
+            var slotsModel = new GetSlotModel
             {
                 BookingId = Id,
                 PageSize = 100,
                 IncludeDeleted = bookingResult.Data.Status is BookingStatus.Cancelled or BookingStatus.Rejected
             };
 
-            var roomSlotsResult = await RoomSlotService.GetPagedAsync(roomSlotsModel);
-            if (roomSlotsResult is { IsSuccess: true, Data.Items: not null })
+            var slotsResult = await SlotService.GetPagedAsync(slotsModel);
+            if (slotsResult is { IsSuccess: true, Data.Items: not null })
             {
-                _booking.RoomSlots = roomSlotsResult.Data.Items
-                    .Adapt<List<BookingRoomSlotViewModel>>();
+                _booking.Slots = slotsResult.Data.Items
+                    .Adapt<List<BookingSlotViewModel>>();
             }
         }
         catch (Exception ex)
@@ -246,7 +246,6 @@
             if (result.IsSuccess)
             {
                 await LoadBooking();
-                // Use the injected hubConnection directly
                 if (HubConnection.State == HubConnectionState.Connected)
                 {
                     // Send notification to the user and all managers in the department

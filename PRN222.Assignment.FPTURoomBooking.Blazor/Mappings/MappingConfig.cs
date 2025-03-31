@@ -13,7 +13,7 @@ public static class MappingConfig
         TypeAdapterConfig<BookingModel, BookingDetailsViewModel>.NewConfig()
             .Map(dest => dest.AccountName, src => src.Account.FullName);
         // Map RoomSlotModel to BookingRoomSlotViewModel
-        TypeAdapterConfig<RoomSlotModel, BookingRoomSlotViewModel>.NewConfig()
+        TypeAdapterConfig<RoomSlotModel, BookingSlotViewModel>.NewConfig()
             .Map(dest => dest.RoomName, src => src.Room.Name);
     }
 }

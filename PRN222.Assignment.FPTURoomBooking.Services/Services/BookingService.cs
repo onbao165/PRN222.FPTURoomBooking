@@ -57,6 +57,12 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
                 var query = _unitOfWork.BookingRepository.GetQueryable();
                 Expression<Func<Booking, bool>> filter = x => true;
 
+                // Add department filter
+                if (!model.DepartmentId.IsNullOrGuidEmpty())
+                {
+                    filter = filter.CombineAndAlsoExpressions(x => x.Account.DepartmentId == model.DepartmentId);
+                }
+
                 if (!string.IsNullOrEmpty(model.SearchTerm))
                 {
                     filter = filter.CombineAndAlsoExpressions(x => true);
