@@ -6,12 +6,14 @@
 @using PRN222.Assignment.FPTURoomBooking.Services.Models.Campus
 @using PRN222.Assignment.FPTURoomBooking.Services.Models.Department
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Account
 @rendermode InteractiveServer
 @attribute [Authorize(Roles = "Admin")]
 @inject IDepartmentService DepartmentService
 @inject ICampusService CampusService
 @inject NavigationManager NavigationManager
 @inject HubConnection HubConnection
+@inject IAccountService AccountService
 
 <style>
     .department-details-card {
@@ -106,6 +108,27 @@
     .spinner-border {
         color: #3182ce;
     }
+
+    .list-section {
+        margin-top: 2rem;
+        padding: 1rem;
+        background-color: #f8fafc;
+        border-radius: 8px;
+    }
+
+    .list-title {
+        color: #2d3748;
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .list-table {
+        background-color: white;
+        border-radius: 6px;
+        overflow: hidden;
+    }
 </style>
 
 <PageTitle>@(IsNew ? "Create Department" : "Department Details")</PageTitle>
@@ -196,6 +219,46 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div class="list-section">
+                            <h4 class="list-title">Department Managers</h4>
+                            @if (_managers == null)
+                            {
+                                <div class="text-center">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            }
+                            else if (!_managers.Any())
+                            {
+                                <div class="alert alert-info">No managers assigned to this department.</div>
+                            }
+                            else
+                            {
+                                <div class="table-responsive list-table">
+                                    <table class="table table-hover mb-0">
+                                        <thead>
+                                        <tr>
+                                            <th>Full Name</th>
+                                            <th>Email</th>
+                                            <th>Username</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        @foreach (var manager in _managers)
+                                        {
+                                            <tr>
+                                                <td>@manager.FullName</td>
+                                                <td>@manager.Email</td>
+                                                <td>@manager.Username</td>
+                                            </tr>
+                                        }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </div>
                     </div>
                 }
             }
@@ -208,6 +271,7 @@
 
     private List<CampusModel> _campuses = [];
     private string? _errorMessage;
+    private List<AccountModel>? _managers;
 
     private InitDepartmentModel _initDepartment = new()
     {
@@ -298,6 +362,7 @@
             if (result.IsSuccess)
             {
                 _initDepartment = result.Data.Adapt<InitDepartmentModel>();
+                await LoadManagers();
             }
             else
             {
@@ -308,6 +373,27 @@
         finally
         {
             _loading = false;
+        }
+    }
+
+    private async Task LoadManagers()
+    {
+        try
+        {
+            var result = await AccountService.GetManagersAsync(Id!.Value);
+
+            if (result.IsSuccess)
+            {
+                _managers = result.Data?.ToList();
+            }
+            else
+            {
+                _errorMessage = "Failed to load department managers";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error loading managers: {ex.Message}";
         }
     }
 

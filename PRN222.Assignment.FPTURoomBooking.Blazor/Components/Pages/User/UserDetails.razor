@@ -187,7 +187,7 @@
 
                         <div class="mb-3">
                             <label class="form-label">Role</label>
-                            <InputSelect @bind-Value="@_initUser.Role" @onchange="OnRoleChange" class="form-select">
+                            <InputSelect @bind-Value="@_initUser.Role" class="form-select">
                                 <option value="@AccountRole.Admin">Admin</option>
                                 <option value="@AccountRole.Manager">Manager</option>
                                 <option value="@AccountRole.User">User</option>
@@ -195,7 +195,7 @@
                             <ValidationMessage For="@(() => _initUser.Role)"/>
                         </div>
 
-                        @if (_initUser.Role == AccountRole.Manager)
+                        @if (_initUser.Role != AccountRole.Admin)
                         {
                             <div class="mb-3">
                                 <label class="form-label">Department</label>
@@ -249,15 +249,12 @@
                                     <div class="details-value">@_initUser.Role</div>
                                 </div>
 
-                                @if (_initUser.Role == AccountRole.Manager)
-                                {
-                                    <div class="mb-4">
-                                        <div class="details-label">Department</div>
-                                        <div class="details-value">
-                                            @(_departments.FirstOrDefault(d => d.Id == _initUser.DepartmentId)?.Name ?? "No Department")
-                                        </div>
+                                <div class="mb-4">
+                                    <div class="details-label">Department</div>
+                                    <div class="details-value">
+                                        @(_departments.FirstOrDefault(d => d.Id == _initUser.DepartmentId)?.Name ?? "No Department")
                                     </div>
-                                }
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -279,6 +276,7 @@
         Email = null,
         Username = null,
         Password = null,
+        DepartmentId = Guid.Empty,
         Role = AccountRole.User
     };
 
@@ -297,17 +295,6 @@
         {
             _loading = false;
         }
-    }
-
-    private async Task OnRoleChange(ChangeEventArgs e)
-    {
-        if (_initUser.Role != AccountRole.Manager)
-        {
-            _initUser.DepartmentId = null; // Clear department selection if not manager
-        }
-
-        await LoadDepartments(); // Refresh departments when role changes
-        StateHasChanged();
     }
 
     private async Task LoadUser()

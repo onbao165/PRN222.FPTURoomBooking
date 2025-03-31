@@ -145,11 +145,7 @@
                                 <td>@user.Username</td>
                                 <td>@user.FullName</td>
                                 <td>@user.Role</td>
-                                <td>
-                                    @if (user.Role == AccountRole.Manager)
-                                    {
-                                        @(user.Department?.Name ?? "No Department")
-                                    }
+                                <td>@(user.Department?.Name ?? "No Department")
                                 </td>
                                 <td>@user.CreatedAt.ToString("yyyy-MM-dd")</td>
                                 <td>

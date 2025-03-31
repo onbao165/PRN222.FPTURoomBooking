@@ -16,12 +16,13 @@ public class InitAccountModel
 
     [Required(ErrorMessage = "Username is required")]
     [StringLength(255, ErrorMessage = "Username cannot exceed 255 characters")]
-    [RegularExpression(@"^[a-zA-Z0-9_]+$", ErrorMessage = "Username can only contain letters, numbers, and underscores")]
+    [RegularExpression(@"^[a-zA-Z0-9_]+$",
+        ErrorMessage = "Username can only contain letters, numbers, and underscores")]
     public required string Username { get; set; }
 
     [Required(ErrorMessage = "Password is required")]
     [StringLength(255, MinimumLength = 6, ErrorMessage = "Password must be between 6 and 255 characters")]
-    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$", 
+    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$",
         ErrorMessage = "Password must contain at least one uppercase letter, one lowercase letter, and one number")]
     public required string Password { get; set; }
 
@@ -29,5 +30,6 @@ public class InitAccountModel
     [EnumDataType(typeof(AccountRole), ErrorMessage = "Invalid role")]
     public AccountRole Role { get; set; }
 
-    public Guid? DepartmentId { get; set; }
+    [Required(ErrorMessage = "Department is required")]
+    public Guid DepartmentId { get; set; }
 }

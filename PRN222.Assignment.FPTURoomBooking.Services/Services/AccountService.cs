@@ -30,19 +30,32 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
                 return Result.Failure("Account already exists");
             }
 
-            switch (model)
+            switch (model.Role)
             {
-                case { Role: AccountRole.Manager, DepartmentId: null }:
-                    return Result.Failure("Manager must belong to a department");
-                case { Role: not AccountRole.Manager, DepartmentId: not null }:
-                    return Result.Failure("User and Admin cannot belong to a department");
-                case { Role: AccountRole.Manager, DepartmentId: not null }:
+                case AccountRole.Admin when model.DepartmentId != Guid.Empty:
+                    return Result.Failure("Admin cannot be assigned to a department");
+
+                case AccountRole.Admin:
+                    model.DepartmentId = Guid.Empty; // Ensure admin has no department
+                    break;
+
+                case not AccountRole.Admin when model.DepartmentId == Guid.Empty:
+                    return Result.Failure("Department is required for non-admin users");
+
+                default:
+                    // Verify department exists for non-admin users
+                    var department = await _unitOfWork.DepartmentRepository.GetByIdAsync(model.DepartmentId);
+                    if (department == null)
+                    {
+                        return Result.Failure("Department not found");
+                    }
+
                     break;
             }
 
-            if (model.DepartmentId.HasValue)
+            if (model.DepartmentId != Guid.Empty)
             {
-                var department = await _unitOfWork.DepartmentRepository.GetByIdAsync(model.DepartmentId.Value);
+                var department = await _unitOfWork.DepartmentRepository.GetByIdAsync(model.DepartmentId);
                 if (department == null)
                 {
                     return Result.Failure("Department not found");
@@ -108,11 +121,11 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             {
                 return Result<AccountModel>.Failure("Account not found");
             }
-            //
-            // if (!_passwordHasher.VerifyPassword(password, entity.Password))
-            // {
-            //     return Result<AccountModel>.Failure("Invalid password");
-            // }
+
+            if (!_passwordHasher.VerifyPassword(password, entity.Password))
+            {
+                return Result<AccountModel>.Failure("Invalid password");
+            }
 
             return entity.Adapt<AccountModel>();
         }
@@ -137,14 +150,21 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             }
 
             // Validate department based on role
-            switch (model)
+            switch (model.Role)
             {
-                case { Role: AccountRole.Manager, DepartmentId: null }:
-                    return Result.Failure("Manager must belong to a department");
-                case { Role: not AccountRole.Manager, DepartmentId: not null }:
-                    return Result.Failure("User and Admin cannot belong to a department");
-                case { Role: AccountRole.Manager, DepartmentId: not null }:
-                    var department = await _unitOfWork.DepartmentRepository.GetByIdAsync(model.DepartmentId.Value);
+                case AccountRole.Admin when model.DepartmentId != Guid.Empty:
+                    return Result.Failure("Admin cannot be assigned to a department");
+
+                case AccountRole.Admin:
+                    model.DepartmentId = Guid.Empty; // Ensure admin has no department
+                    break;
+
+                case not AccountRole.Admin when model.DepartmentId == Guid.Empty:
+                    return Result.Failure("Department is required for non-admin users");
+
+                default:
+                    // Verify department exists for non-admin users
+                    var department = await _unitOfWork.DepartmentRepository.GetByIdAsync(model.DepartmentId);
                     if (department == null)
                     {
                         return Result.Failure("Department not found");
@@ -198,6 +218,22 @@ namespace PRN222.Assignment.FPTURoomBooking.Services.Services
             catch (Exception ex)
             {
                 return Result<List<Department>>.Failure($"Failed to load departments: {ex.Message}");
+            }
+        }
+
+        public async Task<Result<List<AccountModel>>> GetManagersAsync(Guid departmentId)
+        {
+            try
+            {
+                var managers = await _unitOfWork.AccountRepository.GetQueryable()
+                    .Where(a => a.DepartmentId == departmentId && a.Role == AccountRole.Manager)
+                    .ProjectToType<AccountModel>()
+                    .ToListAsync();
+                return managers;
+            }
+            catch (Exception ex)
+            {
+                return Result<List<AccountModel>>.Failure($"Failed to load managers: {ex.Message}");
             }
         }
     }

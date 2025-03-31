@@ -14,4 +14,5 @@ public interface IAccountService
     Task<Result<AccountModel>> LoginAsync(string email, string password);
     Task<Result<AccountModel>> GetByEmailAsync(string email);
     Task<Result<List<Department>>> GetDepartmentsAsync();
+    Task<Result<List<AccountModel>>> GetManagersAsync(Guid departmentId);
 }
