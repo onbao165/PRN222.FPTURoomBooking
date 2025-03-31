@@ -4,6 +4,8 @@
 @using PRN222.Assignment.FPTURoomBooking.Services.Models.Room
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
 @using Microsoft.AspNetCore.SignalR.Client
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Campus
+@inject ICampusService CampusService
 @rendermode InteractiveServer
 @attribute [Authorize]
 @inject IRoomService RoomService
@@ -55,6 +57,28 @@
                         <ValidationMessage For="@(() => _roomModel.Description)"/>
                     </div>
 
+                    @if (_isAdmin)
+                    {
+                        <div class="mb-3">
+                            <label for="campus" class="form-label">Campus</label>
+                            <InputSelect id="campus" @bind-Value="_roomModel.CampusId" class="form-select">
+                                <option value="">Select Campus</option>
+                                @foreach (var campus in _campuses)
+                                {
+                                    <option value="@campus.Id">@campus.Name</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => _roomModel.CampusId)"/>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <label class="form-label">Campus</label>
+                            <div class="form-control" readonly>@(_roomModel.Campus?.Name ?? "N/A")</div>
+                        </div>
+                    }
+
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                         <button type="submit" class="btn btn-primary" disabled="@_loading">
                             @if (_loading)
@@ -75,24 +99,35 @@
     [Parameter] public Guid Id { get; set; }
 
     private RoomModel? _roomModel;
+    private List<CampusModel> _campuses = [];
     private string? _errorMessage;
-    private Guid _departmentId;
+    private Guid _campusId;
     private bool _loading = true;
+    private bool _isAdmin;
 
     protected override async Task OnInitializedAsync()
     {
         var user = HttpContextAccessor.HttpContext?.User;
         if (user?.Identity?.IsAuthenticated == true)
         {
-            var departmentId = user.FindFirstValue("DepartmentId");
-            if (!string.IsNullOrEmpty(departmentId) && Guid.TryParse(departmentId, out var departmentGuid))
+            _isAdmin = user.IsInRole("Admin");
+            if (!_isAdmin)
             {
-                _departmentId = departmentGuid;
+                var campusId = user.FindFirstValue("CampusId");
+                if (!string.IsNullOrEmpty(campusId) && Guid.TryParse(campusId, out var campusGuid))
+                {
+                    _campusId = campusGuid;
+                }
             }
         }
 
+        if (_isAdmin)
+        {
+            await LoadCampuses();
+        }
+
         await LoadRoom();
-        
+
         if (HubConnection.State == HubConnectionState.Disconnected)
         {
             try
@@ -124,7 +159,28 @@
                 Console.WriteLine($"Error setting up SignalR: {ex.Message}");
             }
         }
+
         await base.OnInitializedAsync();
+    }
+
+    private async Task LoadCampuses()
+    {
+        try
+        {
+            var result = await CampusService.GetPagedAsync(new GetCampusModel { PageSize = 100 });
+            if (result.IsSuccess && result.Data != null)
+            {
+                _campuses = result.Data.Items.ToList();
+            }
+            else
+            {
+                _errorMessage = "Failed to load campuses";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error loading campuses: {ex.Message}";
+        }
     }
 
     private async Task LoadRoom()
@@ -138,8 +194,8 @@
             if (result is { IsSuccess: true, Data: not null })
             {
                 _roomModel = result.Data;
-                // Check if the room belongs to the manager's department
-                if (_departmentId != Guid.Empty && _roomModel.DepartmentId != _departmentId)
+                // Check if the room belongs to the user's campus (for non-admin users)
+                if (!_isAdmin && _campusId != Guid.Empty && _roomModel.CampusId != _campusId)
                 {
                     _roomModel = null;
                     _errorMessage = "You don't have permission to edit this room.";
@@ -163,9 +219,9 @@
             _loading = true;
             _errorMessage = null;
 
-            if (_roomModel!.DepartmentId != _departmentId)
+            if (!_isAdmin && _roomModel!.CampusId != _campusId)
             {
-                _errorMessage = "You cannot change the department of this room.";
+                _errorMessage = "You cannot change the campus of this room.";
                 return;
             }
 

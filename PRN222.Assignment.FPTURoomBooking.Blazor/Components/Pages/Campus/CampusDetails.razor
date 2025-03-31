@@ -5,11 +5,15 @@
 @using Microsoft.AspNetCore.SignalR.Client
 @using PRN222.Assignment.FPTURoomBooking.Services.Models.Campus
 @using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Department
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Room
 @rendermode InteractiveServer
 @attribute [Authorize(Roles = "Admin")]
 @inject ICampusService CampusService
 @inject NavigationManager NavigationManager
 @inject HubConnection HubConnection
+@inject IDepartmentService DepartmentService
+@inject IRoomService RoomService
 
 <style>
     .campus-details-card {
@@ -104,6 +108,27 @@
     .spinner-border {
         color: #3182ce;
     }
+
+    .list-section {
+        margin-top: 2rem;
+        padding: 1rem;
+        background-color: #f8fafc;
+        border-radius: 8px;
+    }
+
+    .list-title {
+        color: #2d3748;
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .list-table {
+        background-color: white;
+        border-radius: 6px;
+        overflow: hidden;
+    }
 </style>
 
 <PageTitle>@(IsNew ? "Create Campus" : "Campus Details")</PageTitle>
@@ -175,6 +200,82 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div class="list-section">
+                            <h4 class="list-title">Departments</h4>
+                            @if (_departments == null)
+                            {
+                                <div class="text-center">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            }
+                            else if (!_departments.Any())
+                            {
+                                <div class="alert alert-info">No departments found for this campus.</div>
+                            }
+                            else
+                            {
+                                <div class="table-responsive list-table">
+                                    <table class="table table-hover mb-0">
+                                        <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Description</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        @foreach (var dept in _departments)
+                                        {
+                                            <tr>
+                                                <td>@dept.Name</td>
+                                                <td>@dept.Description</td>
+                                            </tr>
+                                        }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="list-section">
+                            <h4 class="list-title">Rooms</h4>
+                            @if (_rooms == null)
+                            {
+                                <div class="text-center">
+                                    <div class="spinner-border" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                            }
+                            else if (!_rooms.Any())
+                            {
+                                <div class="alert alert-info">No rooms found for this campus.</div>
+                            }
+                            else
+                            {
+                                <div class="table-responsive list-table">
+                                    <table class="table table-hover mb-0">
+                                        <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Description</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        @foreach (var room in _rooms)
+                                        {
+                                            <tr>
+                                                <td>@room.Name</td>
+                                                <td>@room.Description</td>
+                                            </tr>
+                                        }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </div>
                     </div>
                 }
             }
@@ -195,6 +296,9 @@
 
     private bool _loading = true;
     private bool IsNew => Id == null;
+
+    private List<DepartmentModel>? _departments;
+    private List<RoomModel>? _rooms;
 
     protected override async Task OnInitializedAsync()
     {
@@ -254,6 +358,8 @@
             if (result.IsSuccess)
             {
                 _initCampus = result.Data.Adapt<InitCampusModel>();
+                await LoadDepartments();
+                await LoadRooms();
             }
             else
             {
@@ -264,6 +370,38 @@
         finally
         {
             _loading = false;
+        }
+    }
+
+    private async Task LoadDepartments()
+    {
+        var result = await DepartmentService.GetPagedAsync(new GetDepartmentModel
+        {
+            CampusId = Id!.Value
+        });
+        if (result.IsSuccess)
+        {
+            _departments = result.Data?.Items.ToList();
+        }
+        else
+        {
+            _errorMessage = result.Error;
+        }
+    }
+
+    private async Task LoadRooms()
+    {
+        var result = await RoomService.GetPagedAsync(new GetRoomModel
+        {
+            CampusId = Id!.Value
+        });
+        if (result.IsSuccess)
+        {
+            _rooms = result.Data?.Items.ToList();
+        }
+        else
+        {
+            _errorMessage = result.Error;
         }
     }
 

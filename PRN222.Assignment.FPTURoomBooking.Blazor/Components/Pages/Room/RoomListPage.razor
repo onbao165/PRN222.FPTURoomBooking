@@ -6,6 +6,7 @@
 @using PRN222.Assignment.FPTURoomBooking.Services.Utils
 @using PRN222.Assignment.FPTURoomBooking.Blazor.Components.Shared
 @using Microsoft.AspNetCore.SignalR.Client
+@using PRN222.Assignment.FPTURoomBooking.Services.Models.Campus
 @rendermode InteractiveServer
 @attribute [Authorize]
 @inject IRoomService RoomService
@@ -13,12 +14,73 @@
 @inject HubConnection HubConnection
 @inject IJSRuntime JsRuntime
 
+<style>
+    .table-responsive {
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        background-color: #2d3748;
+        color: white;
+        font-weight: 500;
+        border: none;
+    }
+
+    .table-striped tbody tr:nth-of-type(odd) {
+        background-color: rgba(0, 0, 0, .02);
+    }
+
+    .btn-outline-secondary {
+        border-color: #e2e8f0;
+    }
+
+    .btn-outline-secondary:hover {
+        background-color: #4a5568;
+        border-color: #4a5568;
+        color: white;
+    }
+
+    .form-control, .form-select {
+        border-color: #e2e8f0;
+        border-radius: 6px;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #4299e1;
+        box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
+    }
+
+    .pagination {
+        margin-top: 1.5rem;
+        margin-bottom: 0;
+    }
+
+    .page-link {
+        color: #4a5568;
+        border-color: #e2e8f0;
+    }
+
+    .page-item.active .page-link {
+        background-color: #4a5568;
+        border-color: #4a5568;
+    }
+
+    .spinner-border {
+        color: #3182ce;
+    }
+</style>
+
 <PageTitle>Room Management</PageTitle>
 
 <div class="container-fluid mt-4">
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h3>Department Rooms</h3>
+            <h3>Campus Rooms</h3>
             <a href="/Room/Create" class="btn btn-primary">
                 <i class="fa fa-plus"></i> Create New Room
             </a>
@@ -70,7 +132,8 @@
                         <tr>
                             <th>Name</th>
                             <th>Description</th>
-                            <th>Department</th>
+                            <th>Campus</th>
+                            <th>Campus Address</th>
                             <th>Created At</th>
                             <th>Actions</th>
                         </tr>
@@ -81,11 +144,11 @@
                             <tr>
                                 <td>@room.Name</td>
                                 <td>@(room.Description ?? "N/A")</td>
-                                <td>@room.Department.Name</td>
+                                <td>@room.Campus.Name</td>
+                                <td>@(room.Campus.Address ?? "N/A")</td>
                                 <td>@room.CreatedAt.ToShortDateString()</td>
                                 <td>
-                                    <a href="/Room/Edit/@room.Id" class="btn btn-sm btn-warning me-2">
-                                        <i class="fa fa-edit"></i> Edit
+                                    <a href="/Room/Edit/@room.Id" class="btn btn-sm btn-info me-2">Details
                                     </a>
                                     <button class="btn btn-sm btn-danger" @onclick="() => DeleteRoom(room.Id)">
                                         <i class="fa fa-trash"></i> Delete
@@ -108,7 +171,7 @@
     private bool _loading = true;
     private int _currentPage = 1;
     private int _totalPages = 1;
-    private Guid _departmentId;
+    private Guid _campusId;
     private string _searchTerm = "";
     private string _orderBy = "name";
     private bool _isDescending;
@@ -118,10 +181,10 @@
         var user = HttpContextAccessor.HttpContext?.User;
         if (user?.Identity?.IsAuthenticated == true)
         {
-            var departmentId = user.FindFirstValue("DepartmentId");
-            if (!string.IsNullOrEmpty(departmentId) && Guid.TryParse(departmentId, out var departmentGuid))
+            var campusId = user.FindFirstValue("CampusId");
+            if (!string.IsNullOrEmpty(campusId) && Guid.TryParse(campusId, out var campusGuid))
             {
-                _departmentId = departmentGuid;
+                _campusId = campusGuid;
             }
         }
 
@@ -171,7 +234,7 @@
             {
                 PageNumber = page,
                 PageSize = 10,
-                DepartmentId = _departmentId == Guid.Empty ? null : _departmentId,
+                CampusId = _campusId == Guid.Empty ? null : _campusId,
                 SearchTerm = _searchTerm,
                 OrderBy = _orderBy,
                 IsDescending = _isDescending
