@@ -10,7 +10,7 @@ using PRN222.Assignment.FPTURoomBooking.Repositories.Models;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Booking;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Campus;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Room;
-using PRN222.Assignment.FPTURoomBooking.Services.Models.RoomSlot;
+using PRN222.Assignment.FPTURoomBooking.Services.Models.Slot;
 using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces;
 using PRN222.Assignment.FPTURoomBooking.Services.Utils;
 
@@ -20,7 +20,7 @@ namespace PRN222.Assignment.FPTURoomBooking.Mvc.Controllers;
 public class BookingController : Controller
 {
     private readonly IBookingService _bookingService;
-    private readonly IRoomSlotService _roomSlotService;
+    private readonly ISlotService _slotService;
     private readonly IAccountService _accountService;
     private readonly IRoomService _roomService;
     private readonly ICampusService _campusService;
@@ -28,13 +28,14 @@ public class BookingController : Controller
 
     public BookingController(
         IBookingService bookingService,
-        IRoomSlotService roomSlotService,
+        ISlotService slotService,
         IAccountService accountService,
         IRoomService roomService,
-        ICampusService campusService, IHubContext<MessageHub, IMessageHubClient> hubContext)
+        ICampusService campusService,
+        IHubContext<MessageHub, IMessageHubClient> hubContext)
     {
         _bookingService = bookingService;
-        _roomSlotService = roomSlotService;
+        _slotService = slotService;
         _accountService = accountService;
         _roomService = roomService;
         _campusService = campusService;
@@ -44,21 +45,18 @@ public class BookingController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(BookingListViewModel model)
     {
-        // Get current user information
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(currentUserId))
         {
             return Challenge();
         }
 
-        // Status list for dropdown
         ViewBag.Statuses = new SelectList(
             Enum.GetValues(typeof(BookingStatus))
                 .Cast<BookingStatus>()
                 .Select(s => new { Id = s, Name = s.ToString() }),
             "Id", "Name", model.Status);
 
-        // Create filter model
         var bookingModel = new GetBookingModel
         {
             PageNumber = model.PageNumber,
@@ -68,7 +66,6 @@ public class BookingController : Controller
             IsDescending = model.IsDescending,
             Status = model.Status,
             AccountId = Guid.Parse(currentUserId),
-            // Add date range filtering
             StartDate = model.StartDate,
             EndDate = model.EndDate
         };
@@ -84,16 +81,12 @@ public class BookingController : Controller
             });
         }
 
-        // Map bookings to view models
         var bookings = new List<BookingViewModel>();
         foreach (var booking in result.Data.Items)
         {
             var viewModel = booking.Adapt<BookingViewModel>();
-
-            // Add account name if available
             viewModel.AccountName = booking.Account.FullName;
 
-            // Add manager account name if available
             if (booking.ManagerId.HasValue)
             {
                 var managerResult = await _accountService.GetAsync(booking.ManagerId.Value);
@@ -103,25 +96,16 @@ public class BookingController : Controller
                 }
             }
 
-            // Get room slots for this booking
-            var roomSlotsModel = new GetRoomSlotModel
+            // Get the single slot for this booking
+            var slot = await _slotService.GetByBookingIdAsync(booking.Id);
+            if (slot is { IsSuccess: true, Data: not null })
             {
-                BookingId = booking.Id,
-                PageSize = 100 // Get all room slots for this booking
-            };
-
-            var roomSlotsResult = await _roomSlotService.GetPagedAsync(roomSlotsModel);
-            if (roomSlotsResult is { IsSuccess: true, Data: not null })
-            {
-                foreach (var slot in roomSlotsResult.Data.Items)
-                {
-                    var roomSlotViewModel = slot.Adapt<RoomSlotViewModel>();
-
-                    roomSlotViewModel.RoomName = slot.Room.Name;
-                    roomSlotViewModel.CampusName = slot.Room.Campus.Name;
-
-                    viewModel.RoomSlots.Add(roomSlotViewModel);
-                }
+                var slotData = slot.Data;
+                viewModel.RoomId = slotData.RoomId;
+                viewModel.RoomName = slotData.Room.Name;
+                viewModel.CampusName = slotData.Room.Campus.Name;
+                viewModel.StartTime = slotData.StartTime;
+                viewModel.EndTime = slotData.EndTime;
             }
 
             bookings.Add(viewModel);
@@ -160,18 +144,14 @@ public class BookingController : Controller
             return NotFound(bookingResult.Error);
         }
 
-        // Check if user has permission to view this booking
         if (bookingResult.Data.AccountId != Guid.Parse(currentUserId))
         {
             return Forbid();
         }
 
         var booking = bookingResult.Data.Adapt<BookingViewModel>();
-
-        // Add account name if available
         booking.AccountName = bookingResult.Data.Account.FullName;
 
-        // Add manager account name if available
         if (bookingResult.Data.ManagerId.HasValue)
         {
             var managerResult = await _accountService.GetAsync(bookingResult.Data.ManagerId.Value);
@@ -181,23 +161,16 @@ public class BookingController : Controller
             }
         }
 
-        // Get room slots for this booking
-        var roomSlotsModel = new GetRoomSlotModel
+        // Get the single slot for this booking
+        var slot = await _slotService.GetByBookingIdAsync(booking.Id);
+        if (slot is { IsSuccess: true, Data: not null })
         {
-            BookingId = booking.Id,
-            PageSize = 100, // Get all room slots for this booking
-            IncludeDeleted = bookingResult.Data.Status is BookingStatus.Cancelled or BookingStatus.Rejected
-        };
-
-        var roomSlotsResult = await _roomSlotService.GetPagedAsync(roomSlotsModel);
-        if (roomSlotsResult is not { IsSuccess: true, Data: not null }) return View(booking);
-        foreach (var slot in roomSlotsResult.Data.Items)
-        {
-            var roomSlotViewModel = slot.Adapt<RoomSlotViewModel>();
-
-            roomSlotViewModel.RoomName = slot.Room.Name;
-            roomSlotViewModel.CampusName = slot.Room.Campus.Name;
-            booking.RoomSlots.Add(roomSlotViewModel);
+            var slotData = slot.Data;
+            booking.RoomId = slotData.RoomId;
+            booking.RoomName = slotData.Room.Name;
+            booking.CampusName = slotData.Room.Campus.Name;
+            booking.StartTime = slotData.StartTime;
+            booking.EndTime = slotData.EndTime;
         }
 
         return View(booking);
@@ -217,7 +190,6 @@ public class BookingController : Controller
             BookingDate = DateTime.Today.AddDays(1).Date
         };
 
-        // If roomId is provided, pre-fill filter options
         if (roomId.HasValue && roomId.Value != Guid.Empty)
         {
             var roomResult = await _roomService.GetAsync(roomId.Value);
@@ -228,9 +200,7 @@ public class BookingController : Controller
             }
         }
 
-        await PopulateAvailableRoomSlots(model);
-        await PopulateDropdowns(model.CampusId);
-
+        await PopulateDropdowns(model);
         return View(model);
     }
 
@@ -244,11 +214,9 @@ public class BookingController : Controller
         {
             return Challenge();
         }
-
         if (!ModelState.IsValid)
         {
-            await PopulateAvailableRoomSlots(model);
-            await PopulateDropdowns(model.CampusId);
+            await PopulateDropdowns(model);
             return View(model);
         }
 
@@ -256,215 +224,92 @@ public class BookingController : Controller
         if (model.BookingDate.Date < DateTime.Today.AddDays(1).Date)
         {
             ModelState.AddModelError(nameof(model.BookingDate), "Booking date must be at least one day from today");
-            await PopulateAvailableRoomSlots(model);
-            await PopulateDropdowns(model.CampusId);
+            await PopulateDropdowns(model);
             return View(model);
         }
 
-        var selectedSlots = model.SelectedRoomSlots.Where(s => s.RoomId != Guid.Empty).ToList();
+        // Ensure StartTime and EndTime use the same date as BookingDate
+        model.StartTime = model.BookingDate.Date.Add(model.StartTime.TimeOfDay);
+        model.EndTime = model.BookingDate.Date.Add(model.EndTime.TimeOfDay);
 
-        if (selectedSlots.Count == 0)
+        // Validate time range
+        if (model.StartTime >= model.EndTime)
         {
-            ModelState.AddModelError(nameof(model.SelectedRoomSlots), "Please select at least one room slot");
-            await PopulateAvailableRoomSlots(model);
-            await PopulateDropdowns(model.CampusId);
+            ModelState.AddModelError(nameof(model.StartTime), "Start time must be before end time");
+            await PopulateDropdowns(model);
             return View(model);
+        }
+
+        // Validate booking hours (6 AM - 10 PM)
+        var earliestTime = model.BookingDate.Date.AddHours(6); // 6 AM
+        var latestTime = model.BookingDate.Date.AddHours(22);  // 10 PM
+
+        if (model.StartTime < earliestTime || model.EndTime > latestTime)
+        {
+            ModelState.AddModelError(string.Empty, "Booking hours must be between 6:00 AM and 10:00 PM");
+            await PopulateDropdowns(model);
+            return View(model);
+        }
+
+        // Validate minimum duration (30 minutes)
+        if ((model.EndTime - model.StartTime).TotalMinutes < 30)
+        {
+            ModelState.AddModelError(string.Empty, "Booking duration must be at least 30 minutes");
+            await PopulateDropdowns(model);
+            return View(model);
+        }
+
+        // Check for time slot conflicts
+        var existingSlots = await _slotService.GetByRoomAndDateAsync(
+            model.RoomId,
+            model.BookingDate);
+
+        if (existingSlots is { IsSuccess: true, Data: not null })
+        {
+            foreach (var existingSlot in existingSlots.Data)
+            {
+
+                // Check if the new slot overlaps with any existing slot
+                if (!DoTimeRangesOverlap(
+                        model.StartTime, model.EndTime,
+                        existingSlot.StartTime, existingSlot.EndTime)) continue;
+                ModelState.AddModelError(string.Empty, 
+                    $"This time slot conflicts with an existing booking ({existingSlot.StartTime:HH:mm} - {existingSlot.EndTime:HH:mm})");
+                await PopulateDropdowns(model);
+                return View(model);
+            }
         }
 
         // Create booking model
         var booking = new BookingModel
         {
             Id = Guid.NewGuid(),
-            BookingDate = model.BookingDate,
+            BookingDate = model.BookingDate.Date, // Ensure we store just the date
             Status = BookingStatus.Pending,
             AccountId = Guid.Parse(currentUserId)
         };
 
-        // Create room slots models
-        var roomSlots = selectedSlots.Select(selection => new RoomSlotModel
+        // Create single slot model
+        var slot = new SlotModel
         {
-            RoomId = selection.RoomId,
+            RoomId = model.RoomId,
             BookingId = booking.Id,
-            TimeSlot = selection.TimeSlot
-        }).ToList();
+            StartTime = model.StartTime, // Already normalized to booking date
+            EndTime = model.EndTime     // Already normalized to booking date
+        };
 
-        // Create booking with room slots in a single transaction
-        var result = await _bookingService.CreateBookingWithRoomSlots(booking, roomSlots);
+        // Create booking with single slot
+        var result = await _bookingService.CreateBookingWithSlots(booking, slot);
 
         if (result is { IsSuccess: true, Data: not null })
         {
-            // Notify the managers that a new booking has been created
+            // Send notification to managers
             await _hubContext.Clients.Group(currentDepartmentId).ReceiveNewBooking();
             return RedirectToAction(nameof(Details), new { id = result.Data.Id });
         }
 
         ModelState.AddModelError(string.Empty, result.Error ?? "Failed to create booking");
-        await PopulateAvailableRoomSlots(model);
-        await PopulateDropdowns(model.CampusId);
-
-        return View(model);
-    }
-
-    [HttpGet]
-    public async Task<IActionResult> Edit(Guid id)
-    {
-        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(currentUserId))
-        {
-            return Challenge();
-        }
-
-        var bookingResult = await _bookingService.GetAsync(id);
-
-        if (!bookingResult.IsSuccess || bookingResult.Data == null)
-        {
-            return NotFound(bookingResult.Error);
-        }
-
-        // Check if user has permission to edit this booking
-        if (bookingResult.Data.AccountId != Guid.Parse(currentUserId))
-        {
-            return Forbid();
-        }
-
-        // Check if booking is in a state that can be edited
-        if (bookingResult.Data.Status != BookingStatus.Pending)
-        {
-            TempData["ErrorMessage"] = "Only pending bookings can be edited";
-            return RedirectToAction(nameof(Details), new { id });
-        }
-
-        var model = bookingResult.Data.Adapt<EditBookingViewModel>();
-
-        // Add account name if available
-        model.AccountName = bookingResult.Data.Account.FullName;
-
-        // Get room slots for this booking
-        var roomSlotsModel = new GetRoomSlotModel
-        {
-            BookingId = model.Id,
-            PageSize = 100, // Get all room slots for this booking
-            // Include deleted room slots if booking is cancelled or rejected
-            IncludeDeleted = bookingResult.Data.Status is BookingStatus.Cancelled or BookingStatus.Rejected
-        };
-
-        var roomSlotsResult = await _roomSlotService.GetPagedAsync(roomSlotsModel);
-        if (roomSlotsResult is not { IsSuccess: true, Data: not null }) return View(model);
-        foreach (var slot in roomSlotsResult.Data.Items)
-        {
-            var roomSlotViewModel = slot.Adapt<RoomSlotViewModel>();
-
-            roomSlotViewModel.RoomName = slot.Room.Name;
-            roomSlotViewModel.CampusName = slot.Room.Campus.Name;
-            model.RoomSlots.Add(roomSlotViewModel);
-        }
-
-        return View(model);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(EditBookingViewModel model)
-    {
-        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(currentUserId))
-        {
-            return Challenge();
-        }
-
-        var bookingResult = await _bookingService.GetAsync(model.Id);
-        if (!bookingResult.IsSuccess || bookingResult.Data == null)
-        {
-            return NotFound(bookingResult.Error);
-        }
-
-        // Check if user has permission to edit this booking
-        if (bookingResult.Data.AccountId != Guid.Parse(currentUserId))
-        {
-            return Forbid();
-        }
-
-        // Only pending bookings can be edited
-        if (bookingResult.Data.Status != BookingStatus.Pending)
-        {
-            TempData["ErrorMessage"] = "Only pending bookings can be edited";
-            return RedirectToAction(nameof(Details), new { id = model.Id });
-        }
-
-        // Validate booking date
-        if (model.BookingDate.Date < DateTime.Today.AddDays(1).Date)
-        {
-            ModelState.AddModelError(nameof(model.BookingDate), "Booking date must be at least one day from today");
-            await RePopulateRoomSlots(model);
-            return View(model);
-        }
-
-        // Get current room slots for this booking
-        var currentRoomSlots = await _roomSlotService.GetPagedAsync(new GetRoomSlotModel
-        {
-            BookingId = model.Id,
-            PageSize = 100
-        });
-        // Get room id from current room slots
-        var roomId = currentRoomSlots.Data?.Items.FirstOrDefault()?.RoomId;
-
-        if (!currentRoomSlots.IsSuccess || currentRoomSlots.Data == null)
-        {
-            ModelState.AddModelError(string.Empty, "Failed to retrieve current room slots");
-            await RePopulateRoomSlots(model);
-            return View(model);
-        }
-
-        // Check if all room slots are available for the new date
-        var existingBookings = await _bookingService.GetPagedAsync(new GetBookingModel
-        {
-            BookingDate = model.BookingDate,
-            RoomId = roomId,
-            PageSize = 1000
-        });
-
-        if (existingBookings is { IsSuccess: true, Data: not null })
-        {
-            var bookedSlots = new HashSet<(Guid RoomId, TimeSlot TimeSlot)>();
-
-            foreach (var booking in existingBookings.Data.Items.Where(b => b.Id != model.Id))
-            {
-                var slots = await _roomSlotService.GetPagedAsync(new GetRoomSlotModel
-                {
-                    BookingId = booking.Id,
-                    PageSize = 100
-                });
-
-                if (!slots.IsSuccess || slots.Data == null) continue;
-
-                foreach (var slot in slots.Data.Items)
-                {
-                    bookedSlots.Add((slot.RoomId, slot.TimeSlot));
-                }
-            }
-
-            // Check if any of current room slots conflict with existing bookings
-            if (currentRoomSlots.Data.Items.Any(slot => bookedSlots.Contains((slot.RoomId, slot.TimeSlot))))
-            {
-                ModelState.AddModelError(string.Empty,
-                    "One or more selected room slots are not available for the new date");
-                await RePopulateRoomSlots(model);
-                return View(model);
-            }
-        }
-
-        // Update booking date
-        bookingResult.Data.BookingDate = model.BookingDate;
-        var updateResult = await _bookingService.UpdateAsync(bookingResult.Data);
-
-        if (updateResult.IsSuccess)
-        {
-            TempData["SuccessMessage"] = "Booking date updated successfully";
-            return RedirectToAction(nameof(Details), new { id = model.Id });
-        }
-
-        ModelState.AddModelError(string.Empty, updateResult.Error ?? "Failed to update booking");
-        await RePopulateRoomSlots(model);
+        await PopulateDropdowns(model);
         return View(model);
     }
 
@@ -508,18 +353,11 @@ public class BookingController : Controller
             return RedirectToAction(nameof(Details), new { id });
         }
 
-        // Delete room slots associated with this booking
-        var roomSlots = await _roomSlotService.GetPagedAsync(new GetRoomSlotModel
+        // Delete slots associated with this booking
+        var slot = await _slotService.GetByBookingIdAsync(id);
+        if (slot is { IsSuccess: true, Data: not null })
         {
-            BookingId = id,
-            PageSize = 100
-        });
-        if (roomSlots is { IsSuccess: true, Data: not null })
-        {
-            foreach (var slot in roomSlots.Data.Items)
-            {
-                await _roomSlotService.DeleteAsync(slot.Id);
-            }
+            await _slotService.DeleteAsync(slot.Data.Id);
         }
 
         TempData["SuccessMessage"] = "Booking cancelled successfully";
@@ -528,217 +366,57 @@ public class BookingController : Controller
         return RedirectToAction(nameof(Details), new { id });
     }
 
-    private async Task PopulateAvailableRoomSlots(CreateBookingViewModel model)
-    {
-        // Get all rooms based on filters
-        var roomQuery = new GetRoomModel
-        {
-            CampusId = model.CampusId,
-            PageSize = 100
-        };
-
-        var roomsResult = await _roomService.GetPagedAsync(roomQuery);
-        if (!roomsResult.IsSuccess || roomsResult.Data == null) return;
-
-        // Get existing bookings for the selected date
-        var bookingsQuery = new GetBookingModel
-        {
-            BookingDate = model.BookingDate,
-            PageSize = 1000
-        };
-
-        var bookingsResult = await _bookingService.GetPagedAsync(bookingsQuery);
-        var bookedSlots = new HashSet<(Guid RoomId, TimeSlot TimeSlot)>();
-
-        if (bookingsResult is { IsSuccess: true, Data: not null })
-        {
-            foreach (var booking in bookingsResult.Data.Items)
-            {
-                var slotsResult = await _roomSlotService.GetPagedAsync(new GetRoomSlotModel
-                {
-                    BookingId = booking.Id,
-                    PageSize = 100
-                });
-
-                if (!slotsResult.IsSuccess || slotsResult.Data == null) continue;
-
-                foreach (var slot in slotsResult.Data.Items)
-                {
-                    bookedSlots.Add((slot.RoomId, slot.TimeSlot));
-                }
-            }
-        }
-
-        // Generate available slots
-        model.AvailableRoomSlots.Clear();
-        foreach (var room in roomsResult.Data.Items)
-        {
-            foreach (TimeSlot timeSlot in Enum.GetValues(typeof(TimeSlot)))
-            {
-                if (bookedSlots.Contains((room.Id, timeSlot))) continue;
-
-                model.AvailableRoomSlots.Add(new RoomSlotViewModel
-                {
-                    RoomId = room.Id,
-                    RoomName = room.Name,
-                    CampusName = room.Campus.Name,
-                    TimeSlot = timeSlot,
-                });
-            }
-        }
-    }
-
-    private async Task PopulateDropdowns(Guid? campusId = null)
+    private async Task PopulateDropdowns(CreateBookingViewModel model)
     {
         // Get campuses
-        var campusesResult = await _campusService.GetPagedAsync(new GetCampusModel
-        {
-            PageSize = 100 // Get a reasonably large number of campuses
-        });
-        ViewBag.Campuses = campusesResult.IsSuccess ? campusesResult.Data?.Items : new List<CampusModel>();
+        var campusesResult = await _campusService.GetPagedAsync(new GetCampusModel { PageSize = 100 });
+        model.Campuses = campusesResult is { IsSuccess: true, Data: not null }
+            ? campusesResult.Data.Items.Select(c => new SelectListItem { Value = c.Id.ToString(), Text = c.Name })
+            : [];
 
         // Get rooms for selected campus
-        var roomsResult = await _roomService.GetPagedAsync(new GetRoomModel
+        if (model.CampusId != Guid.Empty)
         {
-            PageSize = 100,
-            CampusId = campusId,
-        });
-        ViewBag.Rooms = roomsResult.IsSuccess ? roomsResult.Data?.Items : new List<RoomModel>();
+            var roomsResult = await _roomService.GetPagedAsync(new GetRoomModel
+            {
+                PageSize = 100,
+                CampusId = model.CampusId
+            });
+            model.Rooms = roomsResult is { IsSuccess: true, Data: not null }
+                ? roomsResult.Data.Items.Select(r => new SelectListItem { Value = r.Id.ToString(), Text = r.Name })
+                : [];
+        }
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetRooms(Guid? campusId)
+    public async Task<IActionResult> GetRooms(Guid campusId)
     {
-        if (!campusId.HasValue)
-            return Json(new List<object>());
-
         var roomsResult = await _roomService.GetPagedAsync(new GetRoomModel
         {
             PageSize = 100,
             CampusId = campusId
         });
 
-        if (!roomsResult.IsSuccess || roomsResult.Data == null)
-            return Json(new List<object>());
-
-        var rooms = roomsResult.Data.Items.Select(r => new
-        {
-            id = r.Id,
-            name = r.Name
-        });
+        var rooms = roomsResult is { IsSuccess: true, Data: not null }
+            ? roomsResult.Data.Items.Select(r => new { id = r.Id, name = r.Name })
+            : Enumerable.Empty<object>();
 
         return Json(rooms);
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAvailableRoomSlots(DateTime? bookingDate, Guid? campusId,
-        Guid? roomId)
+    public async Task<IActionResult> GetBookedSlots(Guid roomId, DateTime date)
     {
-        var model = new CreateBookingViewModel
+        var slots = await _slotService.GetByRoomAndDateAsync(roomId, date);
+        if (slots is { IsSuccess: true, Data: not null })
         {
-            BookingDate = bookingDate ?? DateTime.Today,
-            CampusId = campusId,
-            RoomId = roomId
-        };
-
-        // Check if all required filters are selected
-        if (!bookingDate.HasValue || !campusId.HasValue|| !roomId.HasValue)
-        {
-            return PartialView("_AvailableRoomSlotsPartial", model);
+            return PartialView("_BookedSlotsPartial", slots.Data.Select(s => s.Adapt<SlotViewModel>()));
         }
-
-        // Get all rooms based on filters
-        var roomQuery = new GetRoomModel
-        {
-            CampusId = model.CampusId,
-            PageSize = 100
-        };
-
-        var roomsResult = await _roomService.GetPagedAsync(roomQuery);
-        if (!roomsResult.IsSuccess || roomsResult.Data == null)
-        {
-            model.AvailableRoomSlots.Clear();
-            return PartialView("_AvailableRoomSlotsPartial", model);
-        }
-
-        // Filter rooms if specific room is selected
-        var rooms = roomsResult.Data.Items;
-        if (model.RoomId.HasValue)
-        {
-            rooms = rooms.Where(r => r.Id == model.RoomId.Value).ToList();
-        }
-
-        // Get existing bookings for the selected date
-        var bookingsQuery = new GetBookingModel
-        {
-            BookingDate = model.BookingDate,
-            RoomId = model.RoomId,
-            PageSize = 1000
-        };
-
-        var bookingsResult = await _bookingService.GetPagedAsync(bookingsQuery);
-        var bookedSlots = new HashSet<(Guid RoomId, TimeSlot TimeSlot)>();
-
-        if (bookingsResult is { IsSuccess: true, Data: not null })
-        {
-            var bookings = bookingsResult.Data.Items
-                .Where(b => b.Status != BookingStatus.Cancelled && b.Status != BookingStatus.Rejected).ToList();
-            foreach (var booking in bookings)
-            {
-                var slotsResult = await _roomSlotService.GetPagedAsync(new GetRoomSlotModel
-                {
-                    BookingId = booking.Id,
-                    PageSize = 100
-                });
-
-                if (!slotsResult.IsSuccess || slotsResult.Data == null) continue;
-
-                foreach (var slot in slotsResult.Data.Items)
-                {
-                    bookedSlots.Add((slot.RoomId, slot.TimeSlot));
-                }
-            }
-        }
-
-        // Generate available slots
-        model.AvailableRoomSlots.Clear();
-        foreach (var room in rooms)
-        {
-            foreach (TimeSlot timeSlot in Enum.GetValues(typeof(TimeSlot)))
-            {
-                if (bookedSlots.Contains((room.Id, timeSlot))) continue;
-
-                model.AvailableRoomSlots.Add(new RoomSlotViewModel
-                {
-                    RoomId = room.Id,
-                    RoomName = room.Name,
-                    CampusName = room.Campus.Name,
-                    TimeSlot = timeSlot,
-                });
-            }
-        }
-
-        return PartialView("_AvailableRoomSlotsPartial", model);
+        return PartialView("_BookedSlotsPartial", Enumerable.Empty<SlotViewModel>());
     }
 
-    private async Task RePopulateRoomSlots(EditBookingViewModel model)
+    private static bool DoTimeRangesOverlap(DateTime start1, DateTime end1, DateTime start2, DateTime end2)
     {
-        var roomSlotsModel = new GetRoomSlotModel
-        {
-            BookingId = model.Id,
-            PageSize = 100
-        };
-
-        var roomSlotsResult = await _roomSlotService.GetPagedAsync(roomSlotsModel);
-        if (roomSlotsResult is { IsSuccess: true, Data: not null })
-        {
-            foreach (var slot in roomSlotsResult.Data.Items)
-            {
-                var roomSlotViewModel = slot.Adapt<RoomSlotViewModel>();
-                roomSlotViewModel.RoomName = slot.Room.Name;
-                roomSlotViewModel.CampusName = slot.Room.Campus.Name;
-                model.RoomSlots.Add(roomSlotViewModel);
-            }
-        }
+        return start1 < end2 && start2 < end1;
     }
 }

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using PRN222.Assignment.FPTURoomBooking.Repositories.Models;
 using PRN222.Assignment.FPTURoomBooking.Services.Utils;
 
@@ -18,41 +19,40 @@ public class BookingViewModel
 
     public Guid AccountId { get; set; }
 
-    [Display(Name = "Booked By")] public string AccountName { get; set; } = string.Empty;
+    [Display(Name = "Booked By")] 
+    public string AccountName { get; set; } = string.Empty;
 
     public Guid? ManagerId { get; set; }
 
-    [Display(Name = "Approved By")] public string? ManagerName { get; set; }
+    [Display(Name = "Approved By")] 
+    public string? ManagerName { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
 
-    public List<RoomSlotViewModel> RoomSlots { get; set; } = [];
+    // Single slot information
+    public Guid RoomId { get; set; }
+    [Display(Name = "Room")]
+    public string RoomName { get; set; } = string.Empty;
+    [Display(Name = "Campus")]
+    public string CampusName { get; set; } = string.Empty;
+    [Display(Name = "Start Time")]
+    public DateTime StartTime { get; set; }
+    [Display(Name = "End Time")]
+    public DateTime EndTime { get; set; }
 }
 
 public class BookingListViewModel
 {
     public PaginationResult<BookingViewModel> Bookings { get; set; } = null!;
-
     public string? SearchTerm { get; set; }
-
     public string? OrderBy { get; set; }
-
     public bool IsDescending { get; set; }
-
     public int PageNumber { get; set; } = 1;
-
     public int PageSize { get; set; } = 10;
-
-    public Guid? AccountId { get; set; }
-
-    public Guid? ManagerId { get; set; }
-
     public BookingStatus? Status { get; set; }
-
     public DateTime? StartDate { get; set; }
-
     public DateTime? EndDate { get; set; }
 }
 
@@ -63,23 +63,23 @@ public class CreateBookingViewModel
     [DataType(DataType.Date)]
     public DateTime BookingDate { get; set; }
 
-    // Filter properties
-    public Guid? CampusId { get; set; }
-    public Guid? DepartmentId { get; set; }
-    public Guid? RoomId { get; set; }
+    [Required]
+    public Guid CampusId { get; set; }
 
-    // Selected room slots
-    [Required(ErrorMessage = "Please select at least one room slot")]
-    public List<RoomSlotSelectionViewModel> SelectedRoomSlots { get; set; } = [];
-    
-    // Available room slots for selection
-    public List<RoomSlotViewModel> AvailableRoomSlots { get; set; } = [];
-}
-
-public class RoomSlotSelectionViewModel
-{
+    [Required]
     public Guid RoomId { get; set; }
-    public TimeSlot TimeSlot { get; set; }
+
+    [Required]
+    [Display(Name = "Start Time")]
+    public DateTime StartTime { get; set; }
+
+    [Required]
+    [Display(Name = "End Time")]
+    public DateTime EndTime { get; set; }
+
+    // For dropdowns in the view
+    public IEnumerable<SelectListItem> Campuses { get; set; } = [];
+    public IEnumerable<SelectListItem> Rooms { get; set; } = [];
 }
 
 public class EditBookingViewModel
@@ -91,12 +91,22 @@ public class EditBookingViewModel
     [DataType(DataType.Date)]
     public DateTime BookingDate { get; set; }
 
-    [Display(Name = "Status")] public BookingStatus Status { get; set; }
-
-    [Display(Name = "Room Slots")] public List<RoomSlotViewModel> RoomSlots { get; set; } = [];
+    [Display(Name = "Status")] 
+    public BookingStatus Status { get; set; }
 
     public Guid AccountId { get; set; }
 
-    [Display(Name = "Booked By")] public string AccountName { get; set; } = string.Empty;
+    [Display(Name = "Booked By")] 
+    public string AccountName { get; set; } = string.Empty;
 
+    // Single slot information
+    public Guid RoomId { get; set; }
+    [Display(Name = "Room")]
+    public string RoomName { get; set; } = string.Empty;
+    [Display(Name = "Campus")]
+    public string CampusName { get; set; } = string.Empty;
+    [Display(Name = "Start Time")]
+    public DateTime StartTime { get; set; }
+    [Display(Name = "End Time")]
+    public DateTime EndTime { get; set; }
 }

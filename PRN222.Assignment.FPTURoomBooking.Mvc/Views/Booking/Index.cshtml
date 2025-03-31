@@ -122,7 +122,6 @@
                             <th>Booking Date</th>
                             <th>Status</th>
                             <th>Created At</th>
-                            <th>Room Count</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -132,7 +131,7 @@
                             foreach (var booking in Model.Bookings.Items)
                             {
                                 <tr>
-                                    <td>@booking.Id.ToString().Substring(0, 8)...</td>
+                                    <td>@(booking.Id.ToString()[..8])...</td>
                                     <td>@booking.BookingDate.ToString("yyyy-MM-dd")</td>
                                     <td>
                                         @switch (booking.Status)
@@ -155,7 +154,6 @@
                                         }
                                     </td>
                                     <td>@booking.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
-                                    <td>@booking.RoomSlots.Count</td>
                                     <td>
                                         <div class="btn-group" role="group">
                                             <a asp-action="Details" asp-route-id="@booking.Id" class="btn btn-sm btn-info">
@@ -163,9 +161,6 @@
                                             </a>
                                             @if (booking.Status == BookingStatus.Pending)
                                             {
-                                                <a asp-action="Edit" asp-route-id="@booking.Id" class="btn btn-sm btn-primary">
-                                                    <i class="fas fa-edit"></i> Edit
-                                                </a>
                                                 <button type="button" class="btn btn-sm btn-warning" 
                                                         data-bs-toggle="modal" 
                                                         data-bs-target="#cancelModal@(booking.Id)">

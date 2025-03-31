@@ -120,20 +120,15 @@
                                                     case BookingStatus.Cancelled:
                                                         <span class="badge bg-secondary">@booking.StatusName</span>
                                                         break;
+                                                    default:
+                                                        throw new ArgumentOutOfRangeException();
                                                 }
                                             </td>
-                                            <td>@booking.RoomSlots.Count</td>
                                             <td>@booking.CreatedAt.ToString("yyyy-MM-dd")</td>
                                             <td>
                                                 <a asp-controller="Booking" asp-action="Details" asp-route-id="@booking.Id" class="btn btn-sm btn-info">
                                                     <i class="fas fa-eye"></i> Details
                                                 </a>
-                                                @if (booking.Status == BookingStatus.Pending)
-                                                {
-                                                    <a asp-controller="Booking" asp-action="Edit" asp-route-id="@booking.Id" class="btn btn-sm btn-primary">
-                                                        <i class="fas fa-edit"></i> Edit
-                                                    </a>
-                                                }
                                             </td>
                                         </tr>
                                     }

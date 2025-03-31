@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PRN222.Assignment.FPTURoomBooking.Mvc.Models;
 using PRN222.Assignment.FPTURoomBooking.Services.Models.Booking;
-using PRN222.Assignment.FPTURoomBooking.Services.Models.RoomSlot;
 using PRN222.Assignment.FPTURoomBooking.Services.Services.Interfaces;
 
 namespace PRN222.Assignment.FPTURoomBooking.Mvc.Controllers;
@@ -14,19 +13,18 @@ public class ProfileController : Controller
 {
     private readonly IAccountService _accountService;
     private readonly IBookingService _bookingService;
-    private readonly IRoomSlotService _roomSlotService;
+    private readonly ISlotService _slotService;
     private readonly IDepartmentService _departmentService;
 
     public ProfileController(
         IAccountService accountService,
         IBookingService bookingService,
-        IRoomSlotService roomSlotService,
-        IDepartmentService departmentService)
+        IDepartmentService departmentService, ISlotService slotService)
     {
         _accountService = accountService;
         _bookingService = bookingService;
-        _roomSlotService = roomSlotService;
         _departmentService = departmentService;
+        _slotService = slotService;
     }
 
     [HttpGet]
@@ -72,35 +70,24 @@ public class ProfileController : Controller
         });
 
         if (!bookingResult.IsSuccess || bookingResult.Data == null) return View(profileViewModel);
+        
         // Map bookings to view models
         var bookings = new List<BookingViewModel>();
         foreach (var booking in bookingResult.Data.Items)
         {
             var bookingViewModel = booking.Adapt<BookingViewModel>();
-
-            // Add account name
             bookingViewModel.AccountName = booking.Account.FullName;
 
-            // Get room slots for this booking
-            var roomSlotsModel = new GetRoomSlotModel
+            // Get the single slot for this booking
+            var slot = await _slotService.GetByBookingIdAsync(booking.Id);
+            if (slot is { IsSuccess: true, Data: not null })
             {
-                BookingId = booking.Id,
-                PageSize = 100 // Get all room slots for this booking
-            };
-
-            var roomSlotsResult = await _roomSlotService.GetPagedAsync(roomSlotsModel);
-            if (roomSlotsResult is { IsSuccess: true, Data: not null })
-            {
-                foreach (var slot in roomSlotsResult.Data.Items)
-                {
-                    var roomSlotViewModel = slot.Adapt<RoomSlotViewModel>();
-
-                    roomSlotViewModel.RoomName = slot.Room.Name;
-                    
-                    roomSlotViewModel.CampusName = slot.Room.Campus.Name;
-
-                    bookingViewModel.RoomSlots.Add(roomSlotViewModel);
-                }
+                var slotData = slot.Data;
+                bookingViewModel.RoomId = slotData.RoomId;
+                bookingViewModel.RoomName = slotData.Room.Name;
+                bookingViewModel.CampusName = slotData.Room.Campus.Name;
+                bookingViewModel.StartTime = slotData.StartTime;
+                bookingViewModel.EndTime = slotData.EndTime;
             }
 
             bookings.Add(bookingViewModel);

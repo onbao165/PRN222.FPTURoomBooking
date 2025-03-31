@@ -168,7 +168,7 @@
         try
         {
             var result = await CampusService.GetPagedAsync(new GetCampusModel { PageSize = 100 });
-            if (result.IsSuccess && result.Data != null)
+            if (result is { IsSuccess: true, Data: not null })
             {
                 _campuses = result.Data.Items.ToList();
             }

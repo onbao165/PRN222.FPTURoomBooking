@@ -1,78 +1,91 @@
 @model CreateBookingViewModel
 
-<h2>Create Booking</h2>
-
-<form asp-action="Create" method="post">
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label asp-for="BookingDate" class="control-label"></label>
-                <input asp-for="BookingDate" class="form-control" type="date" />
-                <span asp-validation-for="BookingDate" class="text-danger"></span>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="CampusId" class="control-label">Campus</label>
-                <select asp-for="CampusId" class="form-control"
-                        asp-items="@(new SelectList(ViewBag.Campuses, "Id", "Name"))">
-                    <option value="">-- Select Campus --</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="DepartmentId" class="control-label">Department</label>
-                <select asp-for="DepartmentId" class="form-control"
-                        asp-items="@(new SelectList(ViewBag.Departments, "Id", "Name"))">
-                    <option value="">-- Select Department --</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label asp-for="RoomId" class="control-label">Room</label>
-                <select asp-for="RoomId" class="form-control"
-                        asp-items="@(new SelectList(ViewBag.Rooms, "Id", "Name"))">
-                    <option value="">-- Select Room --</option>
-                </select>
-            </div>
+<div class="container-fluid px-4">
+    <h1 class="mt-4">Create Booking</h1>
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-calendar-plus me-1"></i> New Booking
         </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <form asp-action="Create" method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                        
+                        <div class="form-group mb-3">
+                            <label asp-for="BookingDate" class="control-label"></label>
+                            <input asp-for="BookingDate" class="form-control" type="date" />
+                            <span asp-validation-for="BookingDate" class="text-danger"></span>
+                        </div>
 
-        <div class="col-md-6">
-            <h4>Available Room Slots</h4>
-            <div class="form-group available-slots-container">
-                @await Html.PartialAsync("_AvailableRoomSlotsPartial", Model)
+                        <div class="form-group mb-3">
+                            <label asp-for="CampusId" class="control-label">Campus</label>
+                            <select asp-for="CampusId" class="form-control"
+                                    asp-items="@(new SelectList(Model.Campuses, "Value", "Text"))">
+                                <option value="">-- Select Campus --</option>
+                            </select>
+                            <span asp-validation-for="CampusId" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label asp-for="RoomId" class="control-label">Room</label>
+                            <select asp-for="RoomId" class="form-control"
+                                    asp-items="@(new SelectList(Model.Rooms, "Value", "Text"))">
+                                <option value="">-- Select Room --</option>
+                            </select>
+                            <span asp-validation-for="RoomId" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label asp-for="StartTime" class="control-label"></label>
+                            <input asp-for="StartTime" class="form-control" type="time" />
+                            <span asp-validation-for="StartTime" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label asp-for="EndTime" class="control-label"></label>
+                            <input asp-for="EndTime" class="form-control" type="time" />
+                            <span asp-validation-for="EndTime" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Create Booking
+                            </button>
+                            <a asp-action="Index" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to List
+                            </a>
+                        </div>
+                    </form>
+                </div>
+                <div class="col-md-6">
+                    <div id="bookedSlots">
+                        <!-- Booked slots will be loaded here -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-
-    <div class="form-group">
-        <input type="submit" value="Create Booking" class="btn btn-primary" />
-        <a asp-action="Index" class="btn btn-secondary">Back to List</a>
-    </div>
-</form>
+</div>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
     
     <script>
-        function updateAvailableRoomSlots() {
-            const campusId = $('#CampusId').val();
-            const departmentId = $('#DepartmentId').val();
+        function loadBookedSlots() {
             const roomId = $('#RoomId').val();
             const bookingDate = $('#BookingDate').val();
+            
+            if (!roomId || !bookingDate) {
+                $('#bookedSlots').empty();
+                return;
+            }
 
-            // Show loading indicator
-            $('.available-slots-container').html('<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading available slots...</div>');
-
-            $.get('@Url.Action("GetAvailableRoomSlots", "Booking")', {
-                campusId: campusId,
-                departmentId: departmentId,
+            $.get('@Url.Action("GetBookedSlots", "Booking")', {
                 roomId: roomId,
-                bookingDate: bookingDate
+                date: bookingDate
             }, function(response) {
-                $('.available-slots-container').html(response);
-            }).fail(function() {
-                $('.available-slots-container').html('<div class="alert alert-danger">Failed to load available slots.</div>');
+                $('#bookedSlots').html(response);
             });
         }
 
@@ -80,55 +93,67 @@
             // Handle campus change
             $('#CampusId').change(function() {
                 const campusId = $(this).val();
-                // Clear dependent dropdowns
-                $('#DepartmentId').empty().append($('<option></option>').val('').text('-- Select Department --'));
-                $('#RoomId').empty().append($('<option></option>').val('').text('-- Select Room --'));
-                
-                if (campusId) {
-                    // Update departments dropdown via AJAX
-                    $.get('@Url.Action("GetDepartments", "Booking")', { campusId: campusId }, function(data) {
-                        $.each(data, function(i, item) {
-                            $('#DepartmentId').append($('<option></option>').val(item.id).text(item.name));
-                        });
-                    });
-                }
-                updateAvailableRoomSlots();
-            });
-
-            // Handle department change
-            $('#DepartmentId').change(function() {
-                const departmentId = $(this).val();
                 // Clear room dropdown
                 $('#RoomId').empty().append($('<option></option>').val('').text('-- Select Room --'));
+                $('#bookedSlots').empty();
                 
-                if (departmentId) {
+                if (campusId) {
                     // Update rooms dropdown via AJAX
-                    $.get('@Url.Action("GetRooms", "Booking")', { departmentId: departmentId }, function(data) {
+                    $.get('@Url.Action("GetRooms", "Booking")', { campusId: campusId }, function(data) {
                         $.each(data, function(i, item) {
                             $('#RoomId').append($('<option></option>').val(item.id).text(item.name));
                         });
                     });
                 }
-                updateAvailableRoomSlots();
             });
 
-            // Handle room change
-            $('#RoomId').change(function() {
-                updateAvailableRoomSlots();
-            });
+            // Load booked slots when room or date changes
+            $('#RoomId, #BookingDate').change(loadBookedSlots);
 
-            // Handle date change
-            $('#BookingDate').change(function() {
-                updateAvailableRoomSlots();
-            });
-
-            // Handle form submission
+            // Form validation
             $('form').submit(function(e) {
-                const selectedSlots = $('input[type="checkbox"]:checked').length;
-                if (selectedSlots === 0) {
+                const startTime = $('#StartTime').val();
+                const endTime = $('#EndTime').val();
+                const bookingDate = $('#BookingDate').val();
+                
+                // Create Date objects for start and end times using the booking date
+                const startDateTime = new Date(bookingDate);
+                const endDateTime = new Date(bookingDate);
+                
+                // Parse hours and minutes from the time inputs
+                const [startHours, startMinutes] = startTime.split(':');
+                const [endHours, endMinutes] = endTime.split(':');
+                
+                // Set the hours and minutes
+                startDateTime.setHours(parseInt(startHours), parseInt(startMinutes), 0);
+                endDateTime.setHours(parseInt(endHours), parseInt(endMinutes), 0);
+
+                // Validate booking hours (6 AM - 10 PM)
+                const earliestTime = new Date(bookingDate);
+                const latestTime = new Date(bookingDate);
+                earliestTime.setHours(6, 0, 0); // 6 AM
+                latestTime.setHours(22, 0, 0);  // 10 PM
+
+                if (startDateTime < earliestTime || endDateTime > latestTime) {
                     e.preventDefault();
-                    alert('Please select at least one room slot.');
+                    alert('Booking hours must be between 6:00 AM and 10:00 PM');
+                    return;
                 }
+
+                // Validate minimum duration (30 minutes)
+                const durationMinutes = (endDateTime - startDateTime) / (1000 * 60);
+                if (durationMinutes < 30) {
+                    e.preventDefault();
+                    alert('Booking duration must be at least 30 minutes');
+                    return;
+                }
+                
+                if (startDateTime >= endDateTime) {
+                    e.preventDefault();
+                    alert('End time must be after start time.');
+                }
+
+                // Additional validation can be added here to check for time slot conflicts
             });
         });
     </script>

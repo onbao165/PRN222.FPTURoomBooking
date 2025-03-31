@@ -1,0 +1,37 @@
+﻿@model IEnumerable<SlotViewModel>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        No booked slots for the selected date and room.
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-clock me-1"></i> Booked Time Slots
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Start Time</th>
+                            <th>End Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var slot in Model.OrderBy(s => s.StartTime))
+                        {
+                            <tr>
+                                <td>@slot.StartTime.ToString("HH:mm")</td>
+                                <td>@slot.EndTime.ToString("HH:mm")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}

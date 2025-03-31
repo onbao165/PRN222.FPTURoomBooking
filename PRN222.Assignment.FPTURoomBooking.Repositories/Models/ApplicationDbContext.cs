@@ -15,7 +15,6 @@ public class ApplicationDbContext : DbContext
     public DbSet<Campus> Campuses { get; set; } = null!;
     public DbSet<Department> Departments { get; set; } = null!;
     public DbSet<Room> Rooms { get; set; } = null!;
-    public DbSet<RoomSlot> RoomSlots { get; set; } = null!;
     public DbSet<Slot> Slots { get; set; } = null!;
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -58,14 +57,6 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Campus>(entity => { entity.ToTable(nameof(Campus)); });
         modelBuilder.Entity<Department>(entity => { entity.ToTable(nameof(Department)); });
         modelBuilder.Entity<Room>(entity => { entity.ToTable(nameof(Room)); });
-        modelBuilder.Entity<RoomSlot>(entity =>
-        {
-            entity.ToTable(nameof(RoomSlot));
-            entity.Property(p => p.TimeSlot)
-                .HasConversion(
-                    v => v.ToString(),
-                    v => (TimeSlot)Enum.Parse(typeof(TimeSlot), v));
-        });
         modelBuilder.Entity<Slot>(entity =>
         {
             entity.ToTable(nameof(Slot));

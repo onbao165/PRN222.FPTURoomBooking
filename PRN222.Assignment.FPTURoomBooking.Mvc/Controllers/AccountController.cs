@@ -57,7 +57,7 @@ public class AccountController : Controller
             new(ClaimTypes.NameIdentifier, account.Id.ToString()),
             new(ClaimTypes.Name, account.FullName),
             new(ClaimTypes.Email, account.Email),
-            new(ClaimTypes.Role, account.Role.ToString())
+            new(ClaimTypes.Role, account.Role.ToString()),
         };
 
         if (account.DepartmentId.HasValue)

@@ -47,6 +47,16 @@ public class SlotService : ISlotService
                 .FirstOrDefaultAsync(x => x.Id == id);
             return entity ?? Result<SlotModel>.Failure("Slot not found");
         }
+        
+        public async Task<Result<SlotModel>> GetByBookingIdAsync(Guid bookingId)
+        {
+            var entity = await _unitOfWork.SlotRepository.GetQueryable()
+                .Include(x => x.Room)
+                .Include(x => x.Booking)
+                .ProjectToType<SlotModel>()
+                .FirstOrDefaultAsync(x => x.BookingId == bookingId);
+            return entity ?? Result<SlotModel>.Failure("Slot not found");
+        }
 
         public async Task<Result<PaginationResult<SlotModel>>> GetPagedAsync(GetSlotModel model)
         {
@@ -91,5 +101,25 @@ public class SlotService : ISlotService
             _unitOfWork.SlotRepository.Update(entity);
             await _unitOfWork.SaveChangesAsync();
             return Result.Success();
+        }
+
+        public async Task<Result<IEnumerable<SlotModel>>> GetByRoomAndDateAsync(Guid roomId, DateTime date)
+        {
+            try
+            {
+                var slots = await _unitOfWork.SlotRepository.GetQueryable()
+                    .Include(s => s.Booking)
+                    .Include(s => s.Room)
+                    .Where(s => s.RoomId == roomId &&
+                               s.Booking.BookingDate.Date == date.Date &&
+                               s.Booking.Status != BookingStatus.Cancelled)
+                    .ProjectToType<SlotModel>()
+                    .ToListAsync();
+                return slots;
+            }
+            catch (Exception ex)
+            {
+                return Result<IEnumerable<SlotModel>>.Failure($"Failed to get slots: {ex.Message}");
+            }
         }
 }

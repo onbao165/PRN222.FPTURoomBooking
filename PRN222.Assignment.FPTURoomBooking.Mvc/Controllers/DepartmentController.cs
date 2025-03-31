@@ -97,8 +97,6 @@ public class DepartmentController : Controller
         }
 
         var department = departmentResult.Data.Adapt<DepartmentViewModel>();
-
-        // Ensure we have the campus name
         department.CampusName = departmentResult.Data.Campus.Name;
 
         return View(department);
